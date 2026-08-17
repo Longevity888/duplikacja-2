@@ -1,0 +1,2678 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duplikacja 2.0 — Prototyp</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6f8;color:#17202a}
+header{background:#111827;color:white;padding:24px 20px}header h1{margin:0 0 6px;font-size:28px}header p{margin:0;color:#cbd5e1}
+.wrap{max-width:1000px;margin:24px auto;padding:0 16px}.card{background:white;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 4px 18px rgba(0,0,0,.07)}
+h2{margin-top:0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+label{font-weight:700;display:block;margin:14px 0 7px}input,textarea,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font:inherit}textarea{min-height:90px;resize:vertical}
+button{border:0;border-radius:10px;padding:12px 18px;font-weight:700;cursor:pointer;margin-top:14px} .primary{background:#111827;color:white}.secondary{background:#e5e7eb;color:#111827}
+.hidden{display:none}.kpi{padding:16px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0}.kpi strong{display:block;font-size:24px;margin-top:4px}
+.badge{display:inline-block;padding:6px 10px;border-radius:999px;background:#e2e8f0;font-size:13px;font-weight:700}.ok{background:#dcfce7}.warn{background:#fef3c7}
+.progress{height:10px;background:#e5e7eb;border-radius:20px;overflow:hidden}.bar{height:100%;width:0;background:#111827}
+.small{font-size:13px;color:#64748b}.result{line-height:1.55}
+.quoteBox{padding:12px;border:1px solid rgba(255,255,255,.15);border-radius:10px;white-space:pre-wrap;margin:8px 0 14px;background:rgba(255,255,255,.04)}
+.day-grid button.last-viewed{background:#22c55e!important;color:#fff!important;border-color:#22c55e!important;box-shadow:0 0 0 3px rgba(34,197,94,.18)!important;}
+</style>
+</head>
+
+<body>
+<div id="dataSafetyPanel" class="card" style="margin:16px auto;max-width:1100px;">
+  <span class="badge ok">🛡️ MASTER — NIE USUWAĆ / DANE UŻYTKOWNIKA — BEZPIECZEŃSTWO</span>
+  <h2>Twoje postępy są oddzielone od silnika aplikacji</h2>
+  <p>Każdy zapis tworzy automatyczną kopię lokalną. Przed większą aktualizacją możesz też pobrać pełną kopię danych do pliku.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button class="secondary" onclick="exportDuplikacjaData()">💾 Eksportuj moje dane</button>
+    <button class="secondary" onclick="document.getElementById('duplikacjaImportFile').click()">↩️ Przywróć dane</button>
+    <button class="secondary" onclick="createManualBackup()">🛡️ Zrób kopię teraz</button>
+  </div>
+  <input id="duplikacjaImportFile" type="file" accept=".json,application/json" style="display:none" onchange="importDuplikacjaData(event)">
+  <p id="dataSafetyStatus" class="small">Status: ochrona danych aktywna.</p>
+</div>
+
+<header>
+  <h1>Duplikacja 2.0</h1>
+  <p>Prototyp wdrożenia nowej osoby — pierwszy etap: start</p>
+</header>
+
+<div class="wrap">
+  <div id="start" class="card">
+    <span class="badge">START / PLAN 90 DNI</span>
+    <h2>Twój start — znajdź swoje „PO CO”</h2>
+    <p>Nie musisz wiedzieć wszystkiego. Odpowiedz szczerze. Na podstawie odpowiedzi system przygotuje Twój profil startowy i pierwszy plan działania.</p>
+    <button class="primary" onclick="showForm()">Zaczynam</button>
+  </div>
+
+  <div id="resume" class="card hidden">
+    <span class="badge ok">TWÓJ POSTĘP JEST ZAPISANY</span>
+    <h2 id="resumeTitle">Witaj ponownie</h2>
+    <p id="resumeText"></p>
+    <button class="primary" onclick="event.preventDefault(); resumeProgress()">Kontynuuj od miejsca, w którym skończyłeś/aś</button>
+    <button class="secondary" onclick="showForm()">Edytuj profil</button>
+  </div>
+
+  <div id="form" class="card hidden">
+    <span class="badge">PROFIL STARTOWY</span>
+    <h2>Odpowiedz na 10 pytań</h2>
+    <form onsubmit="generateProfile(event)">
+      <label>Imię</label><input id="name" required>
+      <label>1. Dlaczego zdecydowałeś/aś się rozpocząć właśnie teraz?</label><textarea id="why" required></textarea>
+      <label>2. Co konkretnie chcesz osiągnąć w ciągu 90 dni?</label><textarea id="goal" required></textarea>
+      <label>3. Jaka miesięczna kwota dodatkowego dochodu byłaby dla Ciebie satysfakcjonująca?</label><input id="money" type="number" min="0">
+      <label>4. Po co Ci ta kwota? Co ma zmienić?</label><textarea id="purpose" required></textarea>
+      <label>5. Co będzie największą zmianą, jeśli osiągniesz cel?</label><textarea id="change" required></textarea>
+      <label>6. Ile realnie godzin tygodniowo możesz przeznaczyć?</label><input id="hours" type="number" min="0" step="0.5" required>
+      <label>7. Co może Ci najbardziej przeszkodzić?</label><textarea id="blocker" required></textarea>
+      <label>8. Czego najbardziej obawiasz się na początku?</label><textarea id="fear" required></textarea>
+      <label>9. Na ile od 1 do 10 jesteś zdecydowany/a działać przez 90 dni?</label>
+      <select id="commit" required><option value="">Wybierz</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select>
+      <label>10. Co musiałoby się wydarzyć, żeby Twoja determinacja była o 1 punkt wyższa?</label><textarea id="higher"></textarea>
+      <button class="primary" type="submit">Utwórz mój profil</button>
+    </form>
+  </div>
+
+  <div id="profile" class="hidden">
+    <div class="card">
+      <span class="badge ok">PROFIL UTWORZONY</span>
+      <h2 id="profileTitle"></h2>
+      <div class="grid">
+        <div class="kpi">Cel 90 dni<strong id="pGoal">—</strong></div>
+        <div class="kpi">Cel finansowy<strong id="pMoney">—</strong></div>
+        <div class="kpi">Czas / tydzień<strong id="pHours">—</strong></div>
+        <div class="kpi">Determinacja<strong id="pCommit">—</strong></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Twoje „PO CO”</h2>
+      <p class="result" id="pPurpose"></p>
+      <h2>Główna przeszkoda</h2>
+      <p class="result" id="pBlocker"></p>
+      <h2>Obszar pierwszego wsparcia</h2>
+      <p class="result" id="pFocus"></p>
+    </div>
+
+    <div class="card">
+      <h2>Twój pierwszy krok</h2>
+      <p><strong>Nie próbuj teraz nauczyć się wszystkiego.</strong></p>
+      <p>W pierwszym tygodniu skupimy się na modelu działania, podstawowych produktach, liście kontaktów i pierwszych zaproszeniach.</p>
+      <div class="progress"><div class="bar" id="bar"></div></div>
+      <p class="small">Dzień 0 ukończony. Następny etap: Dzień 1 — Model działania.</p>
+      <button class="primary" onclick="openDay1()">Przejdź do Dnia 1</button>
+      <button class="secondary" onclick="resetApp()">Wyczyść prototyp</button>
+    </div>
+
+    <div class="card" id="selfIntroCard">
+  <h2>🎤 Moje przedstawienie się</h2>
+  <p><b>Umiej powiedzieć w 2 zdaniach:</b> czym się zajmujesz i co robisz dla ludzi.</p>
+  <div class="kpi"><b>Przykład</b><p>„Pomagam ludziom zadbać o zdrowie i lepszą jakość życia. Jednocześnie rozwijam zespół osób, które chcą zbudować dodatkowe źródło dochodu.”</p></div>
+  <label>Moja wersja — 2 zdania</label>
+  <textarea id="selfIntro" rows="4" placeholder="Napisz swoją naturalną wersję..."></textarea>
+  <button class="primary" onclick="saveSelfIntro()">💾 Zapisz moje przedstawienie</button>
+  <div id="selfIntroSaved" class="result"></div>
+  <button class="secondary" onclick="toggleSelfIntroHelp()">💡 Jak to zbudować?</button>
+  <div id="selfIntroHelp" class="hidden">
+    <p><b>Zdanie 1:</b> czym się zajmujesz / komu pomagasz.</p>
+    <p><b>Zdanie 2:</b> co konkretnie robisz i dokąd zmierzasz.</p>
+    <p>Nie ucz się tego słowo w słowo. Ma brzmieć jak Ty.</p>
+  </div>
+</div>
+
+<div id="day1" class="card hidden">
+      <span class="badge">DZIEŃ 1 / 90</span>
+      <h2>Model działania — potrafię wyjaśnić, co robię</h2>
+      <p><strong>Cel:</strong> umieć w 60 sekund własnymi słowami powiedzieć, czym się zajmujesz i dlaczego zaczynasz.</p>
+
+      <div class="kpi">
+        <strong>1️⃣ Obejrzyj / poznaj</strong>
+        <p>Na tym etapie nie potrzebujesz długiego szkolenia. Przeczytaj poniższy schemat:</p>
+        <p><b>Potrzeba → produkt → doświadczenie → klubowicz → rekomendacja → możliwość współpracy.</b></p>
+      </div>
+
+      <label>2️⃣ Ćwiczenie — odpowiedz własnymi słowami</label>
+      <textarea id="day1Answer" placeholder="Wyobraź sobie, że znajomy pyta: „Co Ty właściwie teraz robisz?” Odpowiedz tak, jak powiedział(a)byś to naprawdę."></textarea>
+
+      <label>3️⃣ Samoocena</label>
+      <select id="day1Confidence">
+        <option value="">Wybierz</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+        <option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+      </select>
+
+      <label>4️⃣ Zadanie rzeczywiste</label>
+      <p>Powiedz tę odpowiedź jednej znajomej osobie albo nagraj ją telefonem. Nie chodzi o sprzedaż. Chodzi o naturalne wyjaśnienie, czym się zajmujesz.</p>
+      <button class="primary" onclick="checkDay1()">Sprawdź Dzień 1</button>
+
+      <div id="day1Result" class="hidden">
+        <div class="kpi">
+          <span class="badge ok">ANALIZA</span>
+          <p id="day1Feedback"></p>
+        </div>
+        <p><strong>Następny krok:</strong> jeżeli odpowiedź jest naturalna i zrozumiała, przechodzimy do Dnia 2. Jeżeli jest zbyt długa lub brzmi jak prezentacja, system zaleci krótką poprawkę.</p>
+        <button class="primary" onclick="completeDay1()">Ukończ Dzień 1</button>
+      </div>
+    </div>
+<div id="day2ProductHub" class="card hidden">
+      <span class="badge">DZIEŃ 4 / 90</span>
+      <h2>Baza produktów — ucz się przez praktykę</h2>
+      <p><strong>Cel:</strong> poznać 5 podstawowych produktów i umieć o nich rozmawiać własnymi słowami.</p>
+      <div class="kpi"><strong>🧠 Mechanizm nauki</strong><p><b>Przypomnij → pokaż podpowiedź → zapamiętaj → przećwicz rozmowę → zapisz postęp.</b></p><p>Każdy produkt ma własne odpowiedzi i własny postęp. Nic się nie miesza.</p></div>
+<div class="kpi"><strong>📚 ŹRÓDŁA PRODUKTOWE</strong><p>My Blood i Collagen mają podpięte pełne karty edukacyjne. Dzień + Noc i BorelissPro® również mają podpięte karty z Biblioteki. Chlorofil ma już podpiętą kartę edukacyjną i może być uczony tym samym schematem co pozostałe produkty.</p></div>
+      <h3>Produkty podstawowe</h3><div id="productGrid" class="grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));"></div>
+      <div id="productLesson" class="card hidden">
+        <span class="badge" id="productLessonStatus"></span>
+        <h2 id="productLessonTitle"></h2>
+
+        <div class="kpi">
+          <strong>🎯 ŚCIEŻKA PRODUKTU</strong>
+          <p><b>Przypomnij → zatwierdź → porównaj → poznaj kartę → quiz → rozmowa → zalicz.</b></p>
+          <p class="small">Każdy produkt ma osobny zapis. Zmiana produktu nigdy nie przenosi odpowiedzi z poprzedniego.</p>
+        </div>
+
+        <div class="kpi">
+          <strong>1️⃣ Co już wiesz?</strong>
+          <p>Najpierw odpowiedz z pamięci. Nie zaglądaj do karty.</p>
+          <textarea id="productRecall" placeholder="Co już wiesz o tym produkcie? Co to jest? Dla kogo może być interesujący? Co go wyróżnia?"></textarea>
+          <button class="primary" id="productRecallBtn" onclick="confirmProductRecall()">Zatwierdź moją wiedzę</button>
+        </div>
+
+        <div id="productComparison" class="kpi hidden">
+          <strong>🔎 PORÓWNANIE WIEDZY</strong>
+          <div class="kpi">
+            <span class="badge">TWOJA WIEDZA</span>
+            <div id="productUserAnswer" class="quoteBox"></div>
+          </div>
+          <div class="kpi">
+            <span class="badge">KARTA PRODUKTU — BAZA</span>
+            <div id="productDatabaseAnswer" class="quoteBox"></div>
+          </div>
+          <p id="productCompareNote" class="small"></p>
+          <div id="productConfirmStatus" class="kpi hidden">
+            <span class="badge ok">✓ ZATWIERDZONE</span>
+            <p>Twoja odpowiedź została zapisana dla tego konkretnego produktu.</p>
+          </div>
+        </div>
+
+        <button id="productHintBtn" class="secondary hidden" onclick="showProductHint()">📚 Otwórz pełną kartę produktu</button>
+
+        <div id="productHint" class="hidden">
+          <div class="kpi">
+            <span class="badge ok">📚 KARTA PRODUKTU — SKRÓT</span>
+            <h3 id="productCardHeadline"></h3>
+            <div id="productHintText"></div>
+          </div>
+          <div class="kpi">
+            <span class="badge">📖 PEŁNA KARTA ŹRÓDŁOWA</span>
+            <p class="small">To jest materiał, z którego wyprowadzamy pytania. Jeśli quiz sprawdzi coś, czego nie pamiętasz, tutaj masz miejsce, do którego masz wrócić.</p>
+            <div id="productFullCard"></div>
+          </div>
+
+          <div class="grid">
+            <div class="kpi">
+              <strong>🎯 Najważniejsze do zapamiętania</strong>
+              <div id="productKeyPoints"></div>
+            </div>
+            <div class="kpi">
+              <strong>🧪 Skład / parametry</strong>
+              <div id="productComposition"></div>
+            </div>
+            <div class="kpi">
+              <strong>⭐ Co wyróżnia produkt?</strong>
+              <div id="productHighlights"></div>
+            </div>
+            <div class="kpi">
+              <strong>🕒 Sposób użycia</strong>
+              <div id="productUse"></div>
+            </div>
+          </div>
+
+          <div class="kpi">
+            <strong>⚠️ Zasada rozmowy</strong>
+            <p>Uczymy się informacji z karty, ale nie diagnozujemy klienta i nie przedstawiamy suplementu jako leku. Rozmowa zaczyna się od potrzeb i pytań.</p>
+          </div>
+
+          <div id="productRecall2Wrap" class="kpi">
+            <strong>2️⃣ Co zapamiętałeś?</strong>
+            <textarea id="productRecall2" placeholder="Wypisz 3–5 najważniejszych rzeczy, które zapamiętałeś po przeczytaniu karty."></textarea>
+          </div>
+
+          <div class="kpi">
+            <strong>🧠 QUIZ PRODUKTOWY</strong>
+            <p class="small">Odpowiedz na pytania bez wracania do karty. System pokaże Ci, co trzeba jeszcze powtórzyć.</p>
+            <div id="productQuiz"></div>
+            <button class="secondary" onclick="checkProductQuiz()">Sprawdź quiz</button>
+            <div id="productQuizResult" class="hidden kpi"><p id="productQuizFeedback"></p><button class="secondary" type="button" onclick="showProductHint()">📖 Otwórz pełną kartę źródłową</button></div>
+          </div>
+
+          <div id="productPracticeWrap" class="kpi">
+            <strong>3️⃣ Rozmowa z klientem</strong>
+            <p id="productPracticePrompt"></p>
+            <textarea id="productPractice" placeholder="Napisz 3 pytania, które zadasz klientowi, zanim zaczniesz mówić o produkcie."></textarea>
+<button class="secondary" type="button" onclick="checkProductPractice()">🔎 Sprawdź moje pytania</button>
+<div id="productPracticeFeedback" class="kpi hidden"></div>
+          </div>
+
+          <button id="productCheckBtn" class="primary" onclick="checkProductLesson()">🏆 Sprawdź i zalicz produkt</button>
+          <div id="productResult" class="hidden">
+            <div class="kpi"><span class="badge ok">WYNIK</span><p id="productFeedback"></p></div>
+            <button class="primary" onclick="saveProductLesson()">Zapisz postęp produktu</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi"><strong>🏆 Poziomy</strong><p>🟢 1/5 — moja wiedza → 🟡 2/5 — quiz → 🔵 3/5 — pytania do klienta → 🟣 4/5 — wiedza po karcie → ⭐ 5/5 — pełne zaliczenie</p></div>
+      <div id="day2Completion" class="hidden"><div class="kpi"><span class="badge ok">DZIEŃ 4</span><p>Wszystkie 5 produktów podstawowych ma już podpięte karty źródłowe. Każdy może być uczony i zaliczany osobno.</p></div><button class="primary" onclick="completeDay4Products()">Ukończ Dzień 4 i odblokuj Dzień 5</button></div>
+    </div>
+
+    <div id="day3" class="card hidden">
+      <span class="badge">DZIEŃ 3 / 90</span>
+      <h2>Zbuduj swoją bazę kontaktów</h2>
+      <p><strong>Cel:</strong> zbudować na kartce / w swoim arkuszu pierwszą listę minimum 50 osób.</p>
+      <div class="kpi"><strong>Najważniejsza zasada</strong><p><b>Aplikacja nie przechowuje Twoich kontaktów.</b> Ona pomaga Ci przypomnieć sobie ludzi, których znasz.</p><p><b>Najpierw lista. Kwalifikacja później.</b></p></div>
+      <div class="kpi"><strong>👥 Ludzie, których znasz</strong><ul><li>Kogo znasz z rodziny?</li><li>Kogo znasz ze szkoły, studiów albo pracy?</li><li>Z kim kiedyś pracowałeś/aś?</li><li>Kogo znasz z sąsiedztwa?</li><li>Kogo znasz z klubu sportowego, siłowni albo hobby?</li><li>Kogo poznajesz na wydarzeniach?</li></ul></div>
+      <div class="kpi"><strong>🔎 Wyzwalacze pamięci</strong><ul><li><b>Imię:</b> Kogo znasz, kto ma takie samo imię jak Ty?</li><li><b>Praca:</b> Kogo znasz w tej samej lub podobnej branży?</li><li><b>Samochód:</b> Kogo znasz, kto ma taką samą markę samochodu? A inne marki?</li><li><b>Sprzedaż:</b> Komu ostatnio coś sprzedałeś/aś albo coś poleciłeś/aś?</li><li><b>Sport:</b> Kogo znasz, kto uprawia sport, który lubisz?</li><li><b>Social media:</b> Kto reaguje na Twoje posty albo z kim ostatnio pisałeś/aś?</li><li><b>Miejsce:</b> Kogo znasz z osiedla, miasta lub poprzedniego miejsca zamieszkania?</li></ul></div>
+      <div class="kpi"><strong>🔁 Zasada kolejnego skojarzenia</strong><p>Przy każdej osobie zapytaj: <b>„Kogo jeszcze znam, kto jest podobny, pracuje w tej branży, ma takie hobby, taki samochód albo jest związany z tym miejscem?”</b></p></div>
+      <div class="kpi"><strong>❌ Nie oceniaj ludzi</strong><p>Nie pytaj teraz: „Czy ma pieniądze?”, „Czy kupi?”, „Czy się nadaje?”. <b>Teraz tylko przypominasz sobie człowieka.</b></p></div>
+      <label>Ile osób masz już na swojej liście?</label><input id="day3Count" type="number" min="0" placeholder="np. 57">
+      <label>Czy lista została zrobiona na kartce lub w Twoim własnym arkuszu?</label>
+      <select id="day3RealList"><option value="">Wybierz</option><option value="yes">Tak — mam własną listę</option><option value="no">Jeszcze nie</option></select>
+      <label>Z jakich wyzwalaczy korzystałeś/aś?</label><textarea id="day3Sources" placeholder="Np. rodzina, praca, samochody, sport, social media, klienci, wydarzenia..."></textarea>
+      <button class="primary" onclick="checkDay3()">Sprawdź Dzień 3</button>
+      <div id="day3Result" class="hidden"><div class="kpi"><span class="badge ok">ANALIZA</span><p id="day3Feedback"></p></div><button class="primary" onclick="completeDay3()">Ukończ Dzień 3 i odblokuj Dzień 4</button></div>
+    </div>
+
+    <div id="day4" class="card hidden">
+      <span class="badge">MODUŁ — ZAPRASZANIE</span>
+      <h2>Zapraszanie + kontraktowanie</h2>
+      <p><strong>Cel:</strong> nauczyć się zapraszać tak, aby druga osoba jasno wiedziała, co ma zrobić, do kiedy i kiedy wrócicie do rozmowy.</p>
+      <div class="kpi"><strong>🎯 Zasada dnia</strong><p>Zaproszenie nie jest prezentacją. Twoim zadaniem jest doprowadzić do konkretnego następnego kroku.</p><p><b>Zaproszenie → kontrakt → materiał/spotkanie → ustalony follow-up.</b></p></div>
+      <div class="kpi"><strong>🤝 Kontraktowanie — 5 elementów</strong><ol><li>Czy masz czas dzisiaj?</li><li>Jeżeli wyślę Ci materiał, zdążysz go obejrzeć?</li><li>Do której godziny go obejrzysz?</li><li>Kiedy mogę wrócić do Ciebie z telefonem/rozmową?</li><li>Na ten numer / przez ten kanał mogę się z Tobą skontaktować?</li></ol><p>Druga osoba sama deklaruje termin i następny krok.</p></div>
+      <div class="kpi"><strong>📩 Przykład — wysłanie materiału</strong><p>„Masz dzisiaj wieczorem chwilę?”</p><p>„Jeżeli wyślę Ci materiał, zdążysz obejrzeć go dzisiaj?”</p><p>„Do której godziny go obejrzysz?”</p><p>„OK, to mogę zadzwonić po tej godzinie? A może jutro będzie lepiej?”</p><p>„Na ten numer mogę zadzwonić?”</p></div>
+      <div class="kpi"><strong>🌐 To samo kontraktowanie stosujesz przy:</strong><ul><li>spotkaniu 1:1 offline,</li><li>spotkaniu online,</li><li>webinarze,</li><li>evencie,</li><li>filmie lub innym materiale.</li></ul><p>Zmieniasz treść zaproszenia, ale zachowujesz zasadę: <b>konkretny następny krok + termin + follow-up.</b></p></div>
+      <div class="kpi"><strong>❌ Nie rób tego</strong><ul><li>„Wyślę Ci link, obejrzyj i daj znać.”</li><li>Nie zostawiaj follow-upu bez terminu.</li><li>Nie rób całej prezentacji już w zaproszeniu.</li></ul></div>
+      <details class="kpi" open>
+        <summary><strong>📚 BAZA WIEDZY — GOTOWE ZAPROSZENIA</strong></summary>
+        <p><b>Zasada:</b> nie ucz się tekstu słowo w słowo. Naucz się konstrukcji: <b>powód kontaktu → ciekawość → konkretne „czy…?” → kontrakt → termin → follow-up.</b></p>
+        <p>Przykłady poniżej są wzorcami do adaptacji. Eric Worre zaleca, żeby zaproszenie nie było prezentacją, tylko prowadziło do kolejnego kroku; w jego modelu ważne jest także pytanie „czy?” i ustalenie konkretnego „kiedy?”. </p>
+
+        <div class="kpi">
+          <strong>👤 1. Znajomy / ciepły kontakt</strong>
+          <p><b>„Hej, mam coś, nad czym ostatnio pracuję i pomyślałem/am o Tobie. Nie chcę Ci teraz robić całej prezentacji. Mogę Ci wysłać krótki materiał, żebyś zobaczył/a, o co chodzi?”</b></p>
+          <p>Jeśli: „tak” → <b>„Super. Kiedy realnie będziesz mógł/mogła go obejrzeć — dziś wieczorem czy jutro?”</b></p>
+          <p><b>Kontrakt:</b> „OK, to wrócę do Ciebie jutro po [godzinie]. Pasuje?”</p>
+        </div>
+
+        <div class="kpi">
+          <strong>🤝 2. Osoba, z którą dawno nie rozmawiałeś/aś</strong>
+          <p><b>„Cześć! Dawno nie rozmawialiśmy. Co u Ciebie? Ja ostatnio wszedłem/weszłam w nowy projekt i przypomniałem/am sobie o Tobie. Mogę Ci w dwóch zdaniach powiedzieć, dlaczego pomyślałem/am właśnie o Tobie?”</b></p>
+          <p>Po zgodzie: krótko przedstaw powód i zaproponuj <b>konkretną ekspozycję</b>, zamiast opowiadać wszystko przez telefon.</p>
+          <p><b>Kontrakt:</b> „Jeżeli wyślę Ci materiał, kiedy będziesz mógł/mogła go obejrzeć? I kiedy mogę wrócić z telefonem?”</p>
+        </div>
+
+        <div class="kpi">
+          <strong>💼 3. Przedsiębiorca</strong>
+          <p><b>„Mam pytanie biznesowe. Rozwijam dodatkowy projekt oparty na rekomendacjach i szukam osób, które potrafią budować relacje i myśleć biznesowo. Pomyślałem/am o Tobie. Czy byłbyś/byłabyś otwarty/a, żeby zobaczyć, na czym to polega?”</b></p>
+          <p>Jeśli: „tak” → <b>„Wolisz krótki materiał czy 20-minutową rozmowę?”</b></p>
+          <p><b>Kontrakt:</b> ustal formę, termin i dokładny moment powrotu do rozmowy.</p>
+        </div>
+
+        <div class="kpi">
+          <strong>🎯 4. Osoba z polecenia</strong>
+          <p><b>„Cześć, kontaktuję się do Ciebie z polecenia [imię]. Powiedział/a mi, że warto z Tobą porozmawiać, bo [krótki konkretny powód]. Chciałbym/chciałabym powiedzieć Ci, czym się zajmuję i zobaczyć, czy w ogóle będzie to dla Ciebie interesujące. Masz teraz dwie minuty?”</b></p>
+          <p>Jeżeli tak → krótki kontekst → <b>„Jeżeli to ma sens, mogę wysłać Ci materiał i ustalimy, kiedy wrócimy do rozmowy. Pasuje?”</b></p>
+        </div>
+
+        <div class="kpi">
+          <strong>⭐ 5. Ekspert / osoba wpływowa</strong>
+          <p><b>„Mam do Ciebie krótkie pytanie. Rozwijam projekt związany z [obszar] i szukam osób, które mają doświadczenie w [konkretny obszar]. Nie wiem jeszcze, czy to będzie dla Ciebie interesujące, dlatego chciałbym/chciałabym najpierw pokazać Ci, o co chodzi. Czy jesteś otwarty/a, żeby rzucić na to okiem?”</b></p>
+          <p>Nie próbuj od razu „sprzedać” eksperta. Najpierw sprawdź zainteresowanie i ustal następny krok.</p>
+        </div>
+
+        <div class="kpi">
+          <strong>📲 6. Zaproszenie przez wiadomość / DM</strong>
+          <p><b>„Hej [imię], mam krótkie pytanie. Mogę Ci wysłać coś, nad czym ostatnio pracuję? Myślę, że może Cię zainteresować. Jeśli tak, zobaczysz to wtedy, kiedy będziesz mieć chwilę.”</b></p>
+          <p>Po zgodzie: <b>„Super. Kiedy najlepiej, żebym wrócił/wróciła do Ciebie po obejrzeniu — dziś wieczorem czy jutro?”</b></p>
+        </div>
+
+        <div class="kpi">
+          <strong>📩 7. Zaproszenie do konkretnego spotkania</strong>
+          <p><b>„Chciałbym/chciałabym pokazać Ci coś, nad czym pracuję. Zajmie to około 20 minut. Wolisz dziś o 18:00 czy jutro o 19:00?”</b></p>
+          <p>Po wyborze: <b>„Super, czyli jutro 19:00. Umawiamy się, że wtedy masz dla mnie te 20 minut i po spotkaniu porozmawiamy, co o tym myślisz. Pasuje?”</b></p>
+        </div>
+
+        <div class="kpi">
+          <strong>🧠 8. Gdy ktoś od razu pyta: „O co chodzi?”</strong>
+          <p>Nie rób prezentacji w wiadomości. Możesz odpowiedzieć:</p>
+          <p><b>„Jasne, tylko nie chcę Ci opowiadać tego w kilku wiadomościach i wyrwać tego z kontekstu. Mogę Ci wysłać krótki materiał / możemy zrobić krótką rozmowę i wtedy zobaczysz, czy w ogóle Cię to interesuje.”</b></p>
+        </div>
+
+        <div class="kpi">
+          <strong>🔗 9. Mini-kontrakt przy wysyłaniu materiału</strong>
+          <ol>
+            <li><b>Czy jesteś otwarty/a, żeby go zobaczyć?</b></li>
+            <li><b>Kiedy realnie będziesz mógł/mogła go obejrzeć?</b></li>
+            <li><b>Do której godziny / którego dnia?</b></li>
+            <li><b>Kiedy mogę wrócić do Ciebie z rozmową?</b></li>
+            <li><b>Jaki kanał kontaktu będzie najlepszy?</b></li>
+          </ol>
+          <p>To nie ma być przesłuchanie. Wybierz pytania odpowiednie do sytuacji i zawsze doprowadź do <b>konkretnego następnego kroku</b>.</p>
+        </div>
+
+        <div class="kpi">
+          <strong>⚠️ Najważniejsza zasada</strong>
+          <p>Nie chodzi o „wciśnięcie” komuś spotkania. Chodzi o uzyskanie świadomej zgody na <b>kolejny krok</b> i dotrzymanie ustalenia. To jest spójne z podejściem Worre'a: zaproszenie ma prowadzić do ekspozycji, a następnie do kolejnego ustalonego kontaktu. </p>
+        </div>
+      </details>
+      <label>🧠 Ćwiczenie — napisz własne zaproszenie</label><textarea id="day4Invite" placeholder="Napisz krótkie zaproszenie i dodaj kontraktowanie."></textarea>
+      <label>🎭 Ćwiczenie — napisz 4–5 pytań kontraktujących</label><textarea id="day4Contract" placeholder="Czas → wykonanie → termin → follow-up → potwierdzenie kontaktu."></textarea>
+      <label>📊 Ile realnych zaproszeń wykonasz dzisiaj?</label><input id="day4Count" type="number" min="0" placeholder="minimum 5">
+      <label>Czy przy każdym zaproszeniu ustalisz konkretny następny krok i termin?</label><select id="day4Commit"><option value="">Wybierz</option><option value="yes">Tak</option><option value="no">Nie</option></select>
+      <button class="primary" onclick="checkDay4()">Sprawdź moduł Zapraszanie</button>
+      <div id="day4Result" class="hidden"><div class="kpi"><span class="badge ok">ANALIZA</span><p id="day4Feedback"></p></div><button class="primary" onclick="completeDay4()">Ukończ moduł Zapraszanie i odblokuj następny moduł</button></div>
+    </div>
+
+    <div id="roadmap" class="card hidden">
+      <span class="badge">ŚCIEŻKA 90 DNI</span>
+      <h2>Twój plan działania</h2>
+      <p id="roadmapProgressText"></p>
+      <div class="progress"><div class="bar" id="roadmapBar"></div></div>
+      <div id="dayGrid" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(145px,1fr));margin-top:16px"></div>
+    </div>
+
+    <div id="roadmapCurrent" class="card hidden">
+      <span class="badge" id="roadmapStage"></span>
+      <h2 id="roadmapTopic"></h2>
+      <p><strong>Cel modułu:</strong> <span id="roadmapGoal"></span></p>
+
+      <div class="kpi">
+        <strong>1️⃣ Poznaj temat</strong>
+        <p id="roadmapMaterial"></p>
+      </div>
+
+      <label>2️⃣ Twoje ćwiczenie</label>
+      <textarea id="roadmapAnswer" placeholder="Napisz własnymi słowami, co zrozumiałeś/aś i jak zastosujesz to w praktyce."></textarea>
+
+      <label>3️⃣ Zadanie rzeczywiste</label>
+      <textarea id="roadmapAction" placeholder="Napisz konkretnie, co zrobisz dzisiaj w praktyce."></textarea>
+
+      <div class="kpi">
+        <strong>4️⃣ Co powinieneś wynieść z tego dnia?</strong>
+        <p id="roadmapKpi"></p>
+      </div>
+
+      <button class="primary" onclick="checkGenericDay()">Sprawdź dzień</button>
+
+      <div id="roadmapResult" class="hidden">
+        <div class="kpi">
+          <span class="badge ok">GOTOWE DO ZALICZENIA</span>
+          <p id="roadmapFeedback"></p>
+        </div>
+        <button class="primary" onclick="finishRoadmapDay()">Ukończ dzień i odblokuj następny</button>
+      </div>
+    </div>
+
+    <div id="dashboard" class="card hidden">
+      <span class="badge">MENTOR</span>
+      <h2>Raport dla lidera</h2>
+      <div class="grid">
+        <div class="kpi">Osoba<strong id="dName"></strong></div>
+        <div class="kpi">Etap<strong>START</strong></div>
+        <div class="kpi">Dzień<strong>1</strong></div>
+        <div class="kpi">Priorytet<strong id="dPriority"></strong></div>
+      </div>
+      <p class="result" id="dRecommendation"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+function showForm(){
+  document.getElementById('start').classList.add('hidden');
+  document.getElementById('resume').classList.add('hidden');
+  document.getElementById('form').classList.remove('hidden');
+}
+function val(id){return document.getElementById(id).value.trim()}
+function resumeProgress(){
+  const profile=readDuplikacjaProfile();
+  if(!profile || !profile.name)return;
+
+  document.getElementById('start').classList.add('hidden');
+  document.getElementById('resume').classList.add('hidden');
+  document.getElementById('profile').classList.remove('hidden');
+
+  document.getElementById('profileTitle').textContent=(profile.name||"Użytkownik")+" — Twój profil startowy";
+  document.getElementById('pGoal').textContent=profile.goal||"Nie określono";
+  document.getElementById('pMoney').textContent=profile.money?profile.money+" zł/mies.":"Nie określono";
+  document.getElementById('pHours').textContent=(profile.hours||"—")+" h";
+  document.getElementById('pCommit').textContent=(profile.commit||"—")+"/10";
+  document.getElementById('pPurpose').textContent=profile.purpose||"—";
+  document.getElementById('pBlocker').textContent=profile.blocker||"—";
+  document.getElementById('pFocus').textContent=profile.focus||"—";
+
+  document.getElementById('dName').textContent=profile.name||"—";
+  document.getElementById('dPriority').textContent=(profile.commit||0)<7?"wzmocnienie decyzji":(profile.focus||"—");
+  document.getElementById('dRecommendation').textContent=
+    (profile.commit||0)<7
+    ? "Rekomendacja: przed przejściem dalej mentor powinien sprawdzić, czy cel jest realnie ważny dla tej osoby."
+    : "Rekomendacja: nie przeciążaj tej osoby wiedzą. Przejdź do pierwszego działania zgodnie z planem 7-dniowym.";
+
+  const unlocked=Math.max(1,Math.min(91,Number(profile.currentDay||1)));
+  const roadmap=document.getElementById("roadmap");
+  if(roadmap) roadmap.classList.remove("hidden");
+  renderRoadmap(unlocked);
+  if(roadmap) roadmap.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+function resumeAtSavedDay(){
+  const profile=readDuplikacjaProfile();
+  const unlocked=Math.max(1,Number(profile.currentDay||1));
+  const target=Math.max(1,Math.min(90,unlocked-1));
+
+  const roadmap=document.getElementById("roadmap");
+  if(roadmap) roadmap.classList.remove("hidden");
+
+  renderRoadmap(unlocked);
+
+  setTimeout(function(){
+    openRoadmapDay(target);
+    const cards=document.querySelectorAll("[data-day]");
+    let card=null;
+    cards.forEach(function(el){
+      if(Number(el.getAttribute("data-day"))===target) card=el;
+    });
+    if(card) card.scrollIntoView({behavior:"auto",block:"center"});
+  },50);
+}
+function restoreSavedProfile(){
+  const profile=readDuplikacjaProfile();
+  if(!profile || !profile.name)return;
+  document.getElementById("start").classList.add("hidden");
+  document.getElementById("resume").classList.remove("hidden");
+  document.getElementById("resumeTitle").textContent="Witaj ponownie, "+profile.name+" 👋";
+  const day=profile.day1Completed?"Dzień 1 ukończony — możesz przejść dalej.":"Dzień 0 ukończony — czeka na Ciebie Dzień 1.";
+  document.getElementById("resumeText").textContent=day+" Twój profil i wcześniejsze odpowiedzi są zapisane na tym urządzeniu.";
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v||"—";};
+  set("pWhy",profile.why); set("pGoalFull",profile.goal);
+  set("pMoneyFull",profile.money?profile.money+" zł/mies.":"—");
+  set("pPurposeFull",profile.purpose); set("pChange",profile.change);
+  set("pHoursFull",profile.hours?profile.hours+" h/tydz.":"—");
+  set("pBlockerFull",profile.blocker); set("pFear",profile.fear);
+  set("pCommitFull",profile.commit?profile.commit+"/10":"—");
+}
+
+function generateProfile(e){
+  e.preventDefault();
+  const name=val('name'), why=val('why'), goal=val('goal'), money=val('money'), purpose=val('purpose'),
+        change=val('change'), hours=val('hours'), blocker=val('blocker'), fear=val('fear'), commit=Number(val('commit'));
+  let focus="budowanie pierwszych działań i pewności siebie";
+  const text=(blocker+" "+fear).toLowerCase();
+  if(text.includes("ludzi")||text.includes("rozmow")||text.includes("zapros")) focus="ćwiczenie zapraszania i prowadzenia pierwszych rozmów";
+  else if(text.includes("czas")||Number(hours)<3) focus="prosty plan pracy dopasowany do ograniczonego czasu";
+  else if(text.includes("produkt")||text.includes("wied")) focus="podstawowa wiedza produktowa i rozmowa z klientem";
+  document.getElementById('form').classList.add('hidden');
+  document.getElementById('profile').classList.remove('hidden');
+  document.getElementById('profileTitle').textContent=name+" — Twój profil startowy";
+  document.getElementById('pGoal').textContent=goal||"Nie określono";
+  document.getElementById('pMoney').textContent=money?money+" zł/mies.":"Nie określono";
+  document.getElementById('pHours').textContent=hours+" h";
+  document.getElementById('pCommit').textContent=commit+"/10";
+  document.getElementById('pPurpose').textContent=purpose;
+  document.getElementById('pWhy').textContent=why||"—";
+  document.getElementById('pGoalFull').textContent=goal||"—";
+  document.getElementById('pMoneyFull').textContent=money?money+" zł/mies.":"—";
+  document.getElementById('pPurposeFull').textContent=purpose||"—";
+  document.getElementById('pChange').textContent=change||"—";
+  document.getElementById('pHoursFull').textContent=hours?hours+" h/tydz.":"—";
+  document.getElementById('pBlockerFull').textContent=blocker||"—";
+  document.getElementById('pFear').textContent=fear||"—";
+  document.getElementById('pCommitFull').textContent=commit?commit+"/10":"—";
+  document.getElementById('pBlocker').textContent=blocker;
+  document.getElementById('pFocus').textContent=focus;
+  document.getElementById('dName').textContent=name;
+  document.getElementById('dPriority').textContent=commit<7?"wzmocnienie decyzji":focus;
+  document.getElementById('dRecommendation').textContent=
+    commit<7 ? "Rekomendacja: przed przejściem dalej mentor powinien sprawdzić, czy cel jest realnie ważny dla tej osoby."
+    : "Rekomendacja: nie przeciążaj tej osoby wiedzą. Przejdź do pierwszego działania zgodnie z planem 7-dniowym.";
+  localStorage.setItem("duplikacjaLastViewedModule","1");
+  writeDuplikacjaProfile({name,why,goal,money,purpose,change,hours,blocker,fear,commit,focus,products:{},currentDay:1,lastViewedDay:1},true);
+}
+function completeDay(){
+  document.getElementById('bar').style.width="1%";
+  document.getElementById('dashboard').classList.remove('hidden');
+  document.getElementById('dashboard')?.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function openDay1(){
+  document.getElementById('day1').classList.remove('hidden');
+  document.getElementById('bar').style.width="1%";
+  document.getElementById('day1').scrollIntoView({behavior:'smooth'});
+}
+function checkDay1(){
+  const answer = val('day1Answer');
+  const confidence = Number(val('day1Confidence'));
+  const result = document.getElementById('day1Result');
+  const feedback = document.getElementById('day1Feedback');
+  result.classList.remove('hidden');
+
+  if(!answer || answer.length < 40){
+    feedback.innerHTML = "<b>Potrzebujesz jeszcze jednej próby.</b><br>Twoja odpowiedź jest za krótka. Wyjaśnij prostymi słowami: czym się zajmujesz, dla kogo to jest i co chcesz dzięki temu zbudować.";
+    return;
+  }
+  if(answer.length > 650){
+    feedback.innerHTML = "<b>Treść jest za długa.</b><br>Nie rób prezentacji. Skróć odpowiedź do około 30–60 sekund i zostaw miejsce na pytanie drugiej osoby.";
+    return;
+  }
+  if(confidence && confidence < 5){
+    feedback.innerHTML = "<b>Treść jest wystarczająca, ale potrzebujesz pewności.</b><br>Powtórz ją jeszcze 2 razy na głos. Nie ucz się jej na pamięć — ma brzmieć naturalnie.";
+    return;
+  }
+  feedback.innerHTML = "<b>Dobry start. ✅</b><br>Twoja odpowiedź ma wystarczającą długość, żeby przejść dalej. Pamiętaj: celem nie jest wygłoszenie prezentacji, tylko rozpoczęcie naturalnej rozmowy.";
+}
+function saveSelfIntro(){
+  const profile=readDuplikacjaProfile();
+  profile.selfIntro=(document.getElementById("selfIntro")?.value||"").trim();
+  writeDuplikacjaProfile(profile,true);
+  const out=document.getElementById("selfIntroSaved");
+  if(out) out.textContent=profile.selfIntro ? "✅ Zapisane. Możesz wrócić do tego w każdej chwili." : "Wpisz swoją wersję, aby ją zapisać.";
+}
+function restoreSelfIntro(){
+  const profile=readDuplikacjaProfile();
+  const input=document.getElementById("selfIntro");
+  if(input) input.value=profile.selfIntro||"";
+  const out=document.getElementById("selfIntroSaved");
+  if(out && profile.selfIntro) out.textContent="✅ Twoja wersja jest zapisana.";
+}
+function toggleSelfIntroHelp(){
+  document.getElementById("selfIntroHelp")?.classList.toggle("hidden");
+}
+
+function saveDay5Action(){
+  const profile=readDuplikacjaProfile();
+  profile.day5Action1=(document.getElementById("day5Action1")?.value||"").trim();
+  profile.day5Action2=(document.getElementById("day5Action2")?.value||"").trim();
+  profile.day5Action3=(document.getElementById("day5Action3")?.value||"").trim();
+  writeDuplikacjaProfile(profile,true);
+  const fb=document.getElementById("day5ActionFeedback");
+  if(fb)fb.innerHTML="<b>Przygotowanie zapisane. ✅</b>";
+}
+
+function saveDay5Observation(){
+  const profile=readDuplikacjaProfile();
+  profile.day5Observation1=(document.getElementById("day5Observation1")?.value||"").trim();
+  profile.day5Observation2=(document.getElementById("day5Observation2")?.value||"").trim();
+  profile.day5Observation3=(document.getElementById("day5Observation3")?.value||"").trim();
+  writeDuplikacjaProfile(profile,true);
+  const fb=document.getElementById("day5ObservationFeedback");
+  if(fb)fb.innerHTML="<b>Obserwacje zapisane. ✅</b> Możesz wrócić do Dnia 5 później.";
+}
+
+function completeDay1(){
+  const profile=readDuplikacjaProfile();
+  profile.currentDay=2;
+  profile.day1Completed=true;
+  profile.lastViewedDay=1;
+  profile.day1Answer=val('day1Answer');
+  profile.day1Confidence=val('day1Confidence');
+  writeDuplikacjaProfile(profile,true);
+  document.getElementById('bar').style.width="2%";
+  document.getElementById('day1Feedback').innerHTML += "<br><br><b>Dzień 1 zapisany. ✅</b>";
+  renderRoadmap(2);
+}
+function checkDay3(){
+  const count=Number(val('day3Count')||0), realList=val('day3RealList'), sources=val('day3Sources');
+  const result=document.getElementById('day3Result'), feedback=document.getElementById('day3Feedback');
+  result.classList.remove('hidden');
+  if(count<50){feedback.innerHTML="<b>Jeszcze nie.</b><br>Cel Dnia 3 to minimum 50 kontaktów na Twojej własnej liście. Wróć do podpowiedzi i szukaj kolejnych skojarzeń.";return;}
+  if(realList!=="yes"){feedback.innerHTML="<b>Jeszcze nie.</b><br>Lista ma być wykonana poza aplikacją — na kartce albo w Twoim własnym arkuszu.";return;}
+  if(sources.length<20){feedback.innerHTML="<b>Dodaj jeszcze informację.</b><br>Wpisz, z jakich kategorii i wyzwalaczy korzystałeś/aś.";return;}
+  feedback.innerHTML="<b>Świetnie. Lista jest gotowa. ✅</b><br>Nie kwalifikujemy jeszcze kontaktów. Następny etap nauczy Cię naturalnego zapraszania.";
+}
+function completeDay3(){
+  const profile=JSON.parse(localStorage.getItem("duplikacjaProfile")||"{}");
+  profile.currentDay=4; profile.day3Completed=true; profile.lastViewedDay=3; profile.day3Count=val('day3Count'); profile.day3RealList=val('day3RealList'); profile.day3Sources=val('day3Sources');
+  writeDuplikacjaProfile(profile,true); renderRoadmap(4); openRoadmapDay(4);
+}
+
+function checkDay4(){
+  const invite=val('day4Invite'), contract=val('day4Contract'), count=Number(val('day4Count')||0), commit=val('day4Commit');
+  const result=document.getElementById('day4Result'), feedback=document.getElementById('day4Feedback');
+  result.classList.remove('hidden');
+  if(invite.length<50){feedback.innerHTML="<b>Jeszcze nie.</b><br>Napisz pełne zaproszenie.";return;}
+  if(contract.length<50){feedback.innerHTML="<b>Brakuje kontraktowania.</b><br>Wypisz 4–5 konkretnych pytań.";return;}
+  if(count<5){feedback.innerHTML="<b>Jeszcze nie.</b><br>Wykonaj minimum 5 realnych zaproszeń.";return;}
+  if(commit!=="yes"){feedback.innerHTML="<b>Brakuje konkretu.</b><br>Przy każdym zaproszeniu ustal następny krok i termin.";return;}
+  feedback.innerHTML="<b>Dzień 4 zaliczony do wykonania. ✅</b><br>Masz przygotowane zaproszenie, kontraktowanie i plan realnych działań.";
+}
+function completeDay4(){
+  const profile=readDuplikacjaProfile();
+  profile.currentDay=5;
+  profile.day4Completed=true;
+  profile.lastViewedDay=4;
+  profile.day4Invite=val('day4Invite');
+  profile.day4Contract=val('day4Contract');
+  profile.day4Count=val('day4Count');
+  profile.day4Commit=val('day4Commit');
+  writeDuplikacjaProfile(profile,true);
+  renderRoadmap(5);
+  openRoadmapDay(5);
+}
+
+
+(function bootstrapDuplikacjaDataSafety(){
+  try{
+    const p=readDuplikacjaProfile();
+    if(Object.keys(p.products||{}).length>0)writeDuplikacjaProfile(p,true);
+  }catch(e){console.warn("Data safety bootstrap:",e);}
+})();
+(function migrateV35ModuleOrder(){
+  try{
+    const p=readDuplikacjaProfile();
+    let changed=false;
+    // v35: day5 = first meeting, day6 = follow-up. Preserve those records under new module positions.
+    if(p.day5Completed && !p.day6MeetingCompleted){
+      p.day6Observation1=p.day6Observation1||p.day5Observation1||"";
+      p.day6Observation2=p.day6Observation2||p.day5Observation2||"";
+      p.day6Observation3=p.day6Observation3||p.day5Observation3||"";
+      p.day6Action1=p.day6Action1||p.day5Action1||"";
+      p.day6Action2=p.day6Action2||p.day5Action2||"";
+      p.day6Action3=p.day6Action3||p.day5Action3||"";
+      p.day6MeetingCompleted=true; changed=true;
+    }
+    if(p.day6Completed && !p.day7Completed){
+      p.day7Person=p.day7Person||p.day6Person||"";p.day7Opening=p.day7Opening||p.day6Opening||"";p.day7Question=p.day7Question||p.day6Question||"";p.day7NextStep=p.day7NextStep||p.day6NextStep||"";p.day7Date=p.day7Date||p.day6Date||"";
+      p.day7Completed=true; changed=true;
+    }
+    // If the user had already reached the old follow-up, preserve the equivalent new position.
+    if(Number(p.currentDay||1)>=7) p.currentDay=Math.max(Number(p.currentDay||1),8);
+    if(changed)writeDuplikacjaProfile(p,true);
+  }catch(e){console.warn("Module order migration:",e);}
+})();
+const PRODUCT_CATALOG=[
+{
+ id:"daynight", name:"DuoLife Dzień + Noc", source:"Karta edukacyjna: Dzień i noc.pdf",
+ database:"<b>DuoLife Dzień + Noc</b> to dwa suplementy diety w płynnej formie. Karta opisuje je jako produkty dostosowane do dobowego rytmu: „Dzień” koncentruje się na aktywności i funkcjach organizmu w ciągu dnia, a „Noc” na procesach regeneracji i nocnym funkcjonowaniu organizmu.",
+ keyPoints:[
+  "26 ekstraktów i soków roślinnych w obu produktach.",
+  "Karta opisuje wsparcie m.in. procesów antyoksydacyjnych, układu immunologicznego, pokarmowego, sercowo-naczyniowego i krwiotwórczego.",
+  "Dzień: karta wskazuje m.in. źródła witaminy C, składniki wspierające aktywność fizyczną i funkcje umysłowe.",
+  "Noc: karta wskazuje m.in. karczoch, ostropest, morwę białą i melisę w kontekście przemiany materii, regeneracji i snu."
+ ],
+ composition:"Karta zawiera szczegółową listę soków i ekstraktów dla części Dzień i Noc oraz informacje o DER i wartościach RWS.",
+ highlights:[
+  "Rozdzielenie składników obu preparatów z uwzględnieniem cyklu dobowego.",
+  "Płynna forma.",
+  "IHHP™ by DUOLIFE.",
+  "Karta wskazuje 100% składników pochodzenia roślinnego oraz brak konserwantów, glutenu i GMO."
+ ],
+ use:"Karta produktowa zawiera szczegółowy sposób stosowania; przed wdrożeniem do finalnej wersji systemu należy zachować dokładne dawkowanie z aktualnej karty firmy.",
+ practice:"Klient mówi: „Mam dużo pracy w dzień i chcę lepiej zadbać o regenerację”. Jakie pytania zadasz, zanim opowiesz o zestawie Dzień + Noc?",
+ quiz:[
+  ["Jaką główną ideę łączy zestaw Dzień + Noc?","rytm dobowy","Rytm dobowy i rozdzielenie funkcji obu preparatów."],
+  ["W jakiej formie występują preparaty?","płynnej","W płynnej formie."],
+  ["Który składnik karty Noc jest opisany w kontekście funkcjonowania wątroby i dróg żółciowych?","karczoch","Karczoch."],
+  ["Co karta podaje jako metodę utrwalania?","IHHP","IHHP™ by DUOLIFE."],
+  ["Czy Dzień i Noc traktujemy w tym systemie jako dwa osobne produkty szkoleniowe?","nie","W naszym systemie traktujemy je jako jeden zestaw szkoleniowy, ale karta opisuje część Dzień i część Noc osobno."]
+ ]
+},
+{
+ id:"myblood", name:"My Blood", source:"Karta edukacyjna: My Blood Moja Krew",
+ database:"<b>DuoLife MY BLOOD MOJA KREW</b> to suplement witaminowo-mineralny w formie płynnej, oparty na naturalnych składnikach. Karta opisuje połączenie ekstraktów owocowych i warzywnych oraz witamin i minerałów.",
+ keyPoints:[
+  "Karta wskazuje m.in. osoby chcące utrzymać prawidłową morfologię krwi, osoby aktywne fizycznie lub intelektualnie, rekonwalescentów, wegan i wegetarian, osoby starsze oraz dawców krwi.",
+  "Karta opisuje dostarczanie witamin, minerałów i antyoksydantów.",
+  "W składzie znajdują się m.in. soki z buraka, czarnej porzeczki i czerwonego winogrona, ekstrakt z aceroli i liści szpinaku oraz formuła witaminowo-mineralna.",
+  "Karta opisuje wsparcie utrzymania prawidłowych wyników morfologii oraz procesów antyoksydacyjnych."
+ ],
+ composition:"Na 50 ml karta podaje m.in.: witaminę C 160 mg, żelazo 14 mg, cynk 10 mg, witaminę B9 400 µg, witaminę B12 2,5 µg oraz pozostałe witaminy i składniki mineralne wymienione w tabeli RWS.",
+ highlights:[
+  "Płynna forma preparatu.",
+  "Karta wskazuje metodę IHHP™ by DUOLIFE.",
+  "Karta wskazuje brak konserwantów i GMO.",
+  "Karta wskazuje skoncentrowaną formułę i wygodne stosowanie raz dziennie."
+ ],
+ use:"Karta edukacyjna podaje: 25–50 ml raz dziennie przed posiłkiem. Nie przekraczać zalecanej porcji; suplement nie zastępuje zróżnicowanej diety.",
+ practice:"Klient mówi: „Jestem często zmęczony i ostatnio zwracam większą uwagę na wyniki krwi”. Jakie pytania zadasz, zanim przedstawisz My Blood?",
+ quiz:[
+  ["W jakiej formie jest My Blood?","płynnej","W płynnej formie."],
+  ["Ile razy dziennie według karty stosuje się produkt?","raz","Raz dziennie."],
+  ["Który składnik mineralny jest w karcie podany w ilości 14 mg na 50 ml?","żelazo","Żelazo."],
+  ["Który składnik jest podany w ilości 160 mg na 50 ml?","witamina c","Witamina C."],
+  ["Jaką zasadę trzeba zachować przy rozmowie o suplemencie?","nie zastępuje diety","Produkt nie może być przedstawiany jako zamiennik zróżnicowanej diety."]
+ ]
+,"answerType":"number"},
+{
+ id:"collagen", name:"Kolagen", source:"Karta edukacyjna: DUOLIFE Collagen",
+ database:"<b>DUOLIFE Collagen</b> to suplement diety oparty na składnikach pochodzenia naturalnego. Karta opisuje kompozycję składników wspierających kondycję skóry, kości i stawów oraz składniki roślinne będące źródłem krzemionki i antyoksydantów.",
+ keyPoints:[
+  "Kolagen pozyskiwany jest ze skór ryb morskich.",
+  "Karta podaje na 50 ml: kolagen 2500 mg, siarczan glukozaminy 1000 mg, siarczan chondroityny 300 mg i kwas hialuronowy 50 mg.",
+  "Karta zawiera również ekstrakty ze skrzypu, pokrzywy, pędów bambusa i aceroli.",
+  "Karta opisuje wsparcie kondycji skóry, włosów i paznokci oraz funkcji układu kostno-stawowego."
+ ],
+ composition:"Na 50 ml karta podaje: witaminę C 202 mg (252% RWS) i krzem 150 mg. W składzie są m.in. puree z mango, kolagen ze skór ryb morskich, glukozamina, acerola, chondroityna, pokrzywa, bambus, skrzyp i kwas hialuronowy.",
+ highlights:[
+  "Płynna forma.",
+  "IHHP™ by DUOLIFE.",
+  "Karta wskazuje 100% składników pochodzenia naturalnego.",
+  "Karta wskazuje brak konserwantów, GMO i glutenu oraz szklaną butelkę."
+ ],
+ use:"Karta edukacyjna podaje: 25–50 ml/dobę, przed posiłkiem. Nie przekraczać zalecanej porcji; produkt nie zastępuje zróżnicowanej diety.",
+ practice:"Klient mówi: „Zależy mi na skórze, włosach i stawach”. Jakie pytania zadasz, zanim opowiesz o Kolagenie?",
+ quiz:[
+  ["Ile kolagenu karta podaje w 50 ml?","2500","2500 mg."],
+  ["Ile glukozaminy podaje karta w 50 ml?","1000","1000 mg."],
+  ["Z jakiego źródła pochodzi kolagen?","ryb","Ze skór ryb morskich."],
+  ["Ile kwasu hialuronowego podaje karta w 50 ml?","50","50 mg."],
+  ["Jaki jest zakres stosowania podany na karcie?","25-50","25–50 ml/dobę, przed posiłkiem."]
+ ]
+},
+{
+ id:"boreliss", name:"BorelissPro®", source:"Karta edukacyjna: BorelissPro®",
+ database:"<b>BorelissPro®</b> jest suplementem diety opartym na składnikach pochodzenia naturalnego i formule antyoksydantów w kapsułkach o opóźnionym uwalnianiu. Karta opisuje zastosowanie wspomagające m.in. przy obniżonej odporności, nawracających infekcjach oraz narażeniu na ukąszenia kleszczy i komarów.",
+ keyPoints:[
+  "Karta wskazuje wsparcie odporności i procesów antyoksydacyjnych.",
+  "Karta wskazuje również wsparcie pracy układu kostno-stawowego, sercowo-naczyniowego i kondycji skóry.",
+  "W materiale występują ekstrakty ziołowe i owocowo-warzywne oraz inulina z korzenia cykorii.",
+  "Karta podaje stosowanie 1–2 kapsułki dziennie."
+ ],
+ composition:"Pełna karta zawiera szczegółową listę składników aktywnych i bibliografię. W module podstawowym uczymy najpierw kategorii składników i ich roli opisanej przez kartę.",
+ highlights:[
+  "Kapsułki HPMC.",
+  "Karta wskazuje brak konserwantów, glutenu i żelatyny.",
+  "Karta wskazuje możliwość stosowania przez wegan i wegetarian.",
+  "Opóźnione uwalnianie oraz skoncentrowana formuła."
+ ],
+ use:"Karta edukacyjna podaje: 1–2 kapsułki dziennie.",
+ practice:"Klient mówi: „Często łapię infekcje i dużo czasu spędzam na świeżym powietrzu”. Jakie pytania zadasz przed rozmową o BorelissPro®?",
+ quiz:[
+  ["W jakiej postaci jest BorelissPro®?","kapsułki","W kapsułkach."],
+  ["Ile kapsułek dziennie podaje karta?","1-2","1–2 kapsułki dziennie."],
+  ["Jaki prebiotyk wymienia karta?","inulina","Inulina z korzenia cykorii podróżnik."],
+  ["Jakie układy karta wymienia wśród obszarów wsparcia?","odporność","M.in. układ odpornościowy, kostno-stawowy i sercowo-naczyniowy."],
+  ["Czy karta opisuje kapsułkę jako żelatynową?","nie","Nie — karta wskazuje kapsułki z organicznej pochodnej celulozy HPMC i brak żelatyny."]
+ ]
+},
+{
+ id:"chlorophyll", name:"Chlorofil", source:"Karta edukacyjna: Chlorofil DUOLIFE",
+ database:"<b>DUOLIFE Chlorofil</b> to suplement diety oparty na składnikach pochodzenia naturalnego. Karta opisuje kompozycję ekstraktów roślinnych, chlorofiliny i olejku miętowego oraz wskazuje wsparcie m.in. funkcji układu odpornościowego, przewodu pokarmowego, serca i naczyń krwionośnych oraz kondycji fizycznej i psychicznej.",
+ keyPoints:[
+  "Karta wskazuje zastosowanie wspomagające m.in. dla osób chcących wspierać kondycję, energię i witalność, osób w stanach wyczerpania fizycznego i psychicznego oraz narażonych na przewlekły stres.",
+  "Wśród wskazanych grup są także osoby chcące wspierać utrzymanie prawidłowej morfologii krwi, weganie i wegetarianie, osoby z dolegliwościami ze strony układu pokarmowego, osoby narażone na nawracające infekcje, rekonwalescenci i seniorzy.",
+  "Karta wskazuje wsparcie procesów antyoksydacyjnych, funkcji układu immunologicznego, pracy układu krwiotwórczego, funkcji oczyszczania organizmu, pracy układu sercowo-naczyniowego, procesów naprawczych w tkankach, dobrostanu skóry, mikroflory jelitowej i przewodu pokarmowego.",
+  "Główne składniki roślinne to lucerna, chlorella i jęczmień; formułę uzupełniają chlorofilina i olejek miętowy."
+ ],
+ composition:"Składniki: woda oczyszczona, chlorofilina sodowo-miedziowa 20%, chlorella (Chlorella vulgaris) standaryzowana na 50% zawartość białka, ekstrakt z soku jęczmienia (Hordeum vulgare) 25:1, olejek miętowy (Mentha piperita), ekstrakt z ziela lucerny (Medicago sativa) 10:1 oraz gliceryna roślinna jako stabilizator.",
+ highlights:[
+  "100% składników pochodzenia naturalnego.",
+  "Produkt niezawierający konserwantów i GMO.",
+  "Produkt niezawierający glutenu.",
+  "Utrwalanie metodą IHHP™ by DUOLIFE.",
+  "Płynna forma preparatu.",
+  "Szklana butelka."
+ ],
+ use:"Karta podaje: 10–20 ml raz dziennie przed posiłkiem. Nie przekraczać zalecanej porcji do spożycia w ciągu dnia. Produkt nie może być stosowany jako substytut zróżnicowanej diety.",
+ practice:"Klient mówi: „Mam ostatnio dużo stresu, jestem przemęczony i chciałbym lepiej zadbać o dietę”. Jakie pytania zadasz, zanim opowiesz o Chlorofilu?",
+ quiz:[
+  ["Jakie trzy główne roślinne źródła wymienia karta Chlorofilu?","lucerna chlorella jęczmień","Karta wskazuje trzy główne roślinne źródła: lucerna, chlorella i jęczmień. Olejek miętowy jest dodatkowym składnikiem formuły."],
+  ["Ile razy dziennie według karty stosuje się Chlorofil?","raz","Raz dziennie."],
+  ["Jaki zakres porcji podaje karta?","10-20","10–20 ml."],
+  ["Jaki składnik jest pochodną chlorofilu?","chlorofilina","Chlorofilina."],
+  ["Jaką metodą utrwalany jest preparat według karty?","ihhp","IHHP™ by DUOLIFE."]
+ ]
+}
+];let activeProductId=null;const DUPLIKACJA_SCHEMA_VERSION=2;
+function readDuplikacjaProfile(){
+  let raw=localStorage.getItem("duplikacjaProfile");
+  if(!raw){
+    const legacyKeys=["duplikacjaProfileBackup","duplikacjaProfile_v1","duplikacjaProfile_v2"];
+    for(const k of legacyKeys){const x=localStorage.getItem(k);if(x){raw=x;break;}}
+  }
+  let p={};
+  try{p=raw?JSON.parse(raw):{};}catch(e){p={};}
+  if(!p.products)p.products={};
+  if(!p._meta)p._meta={};
+  p._meta.schemaVersion=DUPLIKACJA_SCHEMA_VERSION;
+  p._meta.updatedAt=new Date().toISOString();
+  return p;
+}
+function writeDuplikacjaProfile(p,makeSnapshot=true){
+  if(!p.products)p.products={};
+  if(!p._meta)p._meta={};
+  p._meta.schemaVersion=DUPLIKACJA_SCHEMA_VERSION;
+  p._meta.updatedAt=new Date().toISOString();
+  const raw=JSON.stringify(p);
+  if(makeSnapshot){
+    localStorage.setItem("duplikacjaProfileBackup",raw);
+    localStorage.setItem("duplikacjaLastBackupAt",new Date().toISOString());
+  }
+  localStorage.setItem("duplikacjaProfile",raw);
+  const st=document.getElementById("dataSafetyStatus");
+  if(st)st.textContent="Status: zapisane i zabezpieczone "+new Date().toLocaleTimeString();
+}
+function productProfile(){return readDuplikacjaProfile();}
+function createManualBackup(){
+  const p=readDuplikacjaProfile();writeDuplikacjaProfile(p,true);
+  const st=document.getElementById("dataSafetyStatus");if(st)st.textContent="Status: kopia bezpieczeństwa utworzona "+new Date().toLocaleTimeString();
+}
+function exportDuplikacjaData(){
+  const p=readDuplikacjaProfile();
+  const payload={app:"Duplikacja 2.0",schemaVersion:DUPLIKACJA_SCHEMA_VERSION,exportedAt:new Date().toISOString(),profile:p};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="duplikacja_2_backup_"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);
+  const st=document.getElementById("dataSafetyStatus");if(st)st.textContent="Status: kopia pobrana do pliku.";
+}
+function importDuplikacjaData(event){
+  const file=event.target.files?.[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const obj=JSON.parse(reader.result);
+      const p=obj.profile||obj;
+      if(!p||typeof p!=="object"||!p.products)throw new Error("Nieprawidłowa kopia danych.");
+      const current=readDuplikacjaProfile();
+      const merged={...current,...p,products:{...current.products,...p.products}};
+      writeDuplikacjaProfile(merged,true);
+      renderProductHub();
+      const st=document.getElementById("dataSafetyStatus");if(st)st.textContent="Status: dane przywrócone. Sprawdź postępy produktów.";
+      alert("Dane zostały przywrócone.");
+    }catch(e){alert("Nie udało się przywrócić danych: "+e.message);}
+    event.target.value="";
+  };
+  reader.readAsText(file);
+}
+
+function buildFullSourceCard(p){
+  if(p.id==="myblood"){
+    return `<h4>1. Co to jest?</h4>
+    <p>DuoLife MY BLOOD MOJA KREW — suplement witaminowo-mineralny w formie płynnej, oparty na naturalnych składnikach. Karta opisuje połączenie ekstraktów owocowych i warzywnych oraz źródło witamin i minerałów.</p>
+    <h4>2. Kiedy — według karty?</h4>
+    <ul><li>osoby chcące utrzymać prawidłową morfologię krwi;</li><li>osoby o wzmożonej aktywności ruchowej;</li><li>osoby wykonujące pracę o wzmożonym wysiłku intelektualnym;</li><li>rekonwalescenci;</li><li>kobiety planujące ciążę — ze względu na zawartość kwasu foliowego;</li><li>weganie i wegetarianie — ze względu na zawartość żelaza;</li><li>osoby starsze;</li><li>dawcy krwi.</li></ul>
+    <h4>3. Sposób użycia</h4><p>25–50 ml raz dziennie przed posiłkiem. Nie przekraczać zalecanej porcji; produkt nie zastępuje zróżnicowanej diety.</p>
+    <h4>4. Skład</h4><p>Sok z buraka, czarnej porzeczki i czerwonego winogrona; ekstrakt z aceroli standaryzowany na witaminę C; ekstrakt z liści szpinaku; formuła witamin i minerałów obejmująca m.in. A, D, E, C, witaminy B, żelazo, cynk, miedź, mangan, selen, molibden i jod.</p>
+    <h4>5. Ilości w 50 ml</h4><ul><li>Witamina C — 160 mg</li><li>Witamina B9 — 400 µg</li><li>Żelazo — 14 mg</li><li>Cynk — 10 mg</li><li>Witamina B12 — 2,5 µg</li><li>Witamina E — 12 mg</li><li>Witamina A — 400 µg</li></ul>
+    <h4>6. Co karta opisuje jako działanie składników?</h4><p>Witamina C wspomaga wchłanianie żelaza i utrzymanie prawidłowej funkcji czerwonych krwinek; witaminy z grupy B, w tym kwas foliowy, są opisane jako witaminy krwiotwórcze; żelazo jest niezbędne do produkcji hemoglobiny; cynk wspomaga odporność; miedź uczestniczy w syntezie hemoglobiny.</p>
+    <h4>7. Wyróżniki</h4><p>Płynna forma, IHHP™ by DUOLIFE, naturalne składniki, brak konserwantów i GMO według karty, szklana butelka oraz skoncentrowana formuła umożliwiająca stosowanie raz dziennie.</p>`;
+  }
+  if(p.id==="daynight"){
+    return `<h4>1. Idea zestawu</h4>
+    <p>DuoLife Dzień + Noc to dwa suplementy diety oparte na składnikach pochodzenia naturalnego, dostosowane do rytmu dobowego. Karta opisuje łącznie 26 ekstraktów i soków roślinnych.</p>
+    <h4>2. Obszary opisane w karcie</h4>
+    <p>Procesy antyoksydacyjne, funkcje układu immunologicznego, układ pokarmowy i funkcje wątroby, układ sercowo-naczyniowy, układ krwiotwórczy, mikroflora jelitowa, procesy oczyszczania organizmu, gospodarka lipidowa i węglowodanowa oraz inne funkcje wymienione w karcie.</p>
+    <h4>3. Dzień — przykładowe składniki</h4>
+    <p>Soki z winogron, dzikiej róży, czarnego bzu, głogu, żurawiny, granatu, noni, rokitnika i malin; ekstrakty m.in. z dzikiej róży, acai, lucerny, żeń-szenia i aloesu.</p>
+    <h4>4. Noc — przykładowe składniki</h4>
+    <p>Sok z buraka, śliwki, winogrona i aronii; ekstrakt z aceroli, goji, liści karczocha, lucerny, melisy, morwy białej, nasion ostropestu, pokrzywy i łodygi vilcacory.</p>
+    <h4>5. Szczególnie ważne do quizu</h4>
+    <p>Karta wskazuje karczoch i ostropest w części Noc oraz opisuje funkcje wątroby jako jeden z obszarów działania składników zestawu.</p>
+    <h4>6. Wyróżniki</h4><p>Dostosowanie do rytmu dobowego, składniki pochodzenia naturalnego, płynna forma oraz IHHP™ by DUOLIFE.</p>`;
+  }
+  if(p.id==="collagen"){
+    return `<h4>1. Co to jest?</h4><p>DUOLIFE Collagen to suplement diety oparty na składnikach pochodzenia naturalnego. Karta opisuje kompozycję wspomagającą kondycję skóry, kości i stawów.</p>
+    <h4>2. Składniki kluczowe</h4><p>Kolagen ze skór ryb morskich 2500 mg/50 ml, siarczan glukozaminy 1000 mg/50 ml, siarczan chondroityny 300 mg/50 ml, kwas hialuronowy 50 mg/50 ml, ekstrakty z aceroli, pokrzywy, bambusa i skrzypu oraz puree z mango.</p>
+    <h4>3. Sposób użycia</h4><p>25–50 ml/dobę, przed posiłkiem.</p>
+    <h4>4. Witamina C i krzem</h4><p>W 50 ml: witamina C 202 mg (252% RWS) i krzem 150 mg.</p>
+    <h4>5. Co wyróżnia produkt?</h4><p>Płynna forma, IHHP™, składniki pochodzenia naturalnego, brak konserwantów i GMO według karty, brak glutenu oraz szklana butelka.</p>`;
+  }
+  if(p.id==="chlorophyll"){
+    return `<h4>1. Dla kogo — według karty?</h4><p>Karta wymienia m.in. osoby chcące wspierać kondycję, energię i witalność, osoby w stanie wyczerpania, narażone na przewlekły stres, chcące wspierać prawidłową morfologię krwi, osoby z dolegliwościami układu pokarmowego, narażone na nawracające infekcje, rekonwalescentów i seniorów.</p>
+    <h4>2. Składniki</h4><p>Lucerna, chlorella, jęczmień, olejek miętowy i chlorofilina.</p>
+    <h4>3. Obszary opisane w karcie</h4><p>Procesy antyoksydacyjne, funkcje układu immunologicznego, układ krwiotwórczy i procesy oczyszczania organizmu.</p>
+    <h4>4. Sposób użycia</h4><p>10–20 ml raz dziennie przed posiłkiem.</p>`;
+  }
+  return `<h4>Pełna karta szkoleniowa</h4><p>${p.database}</p><h4>Najważniejsze punkty</h4><ul>${p.keyPoints.map(x=>"<li>"+x+"</li>").join("")}</ul><h4>Skład / parametry</h4><p>${p.composition}</p><h4>Wyróżniki</h4><ul>${p.highlights.map(x=>"<li>"+x+"</li>").join("")}</ul><h4>Sposób użycia</h4><p>${p.use}</p>`;
+}
+
+function renderProductHub(){
+  const profile=productProfile(),grid=document.getElementById("productGrid");
+  if(!grid)return;
+  grid.innerHTML="";
+  PRODUCT_CATALOG.forEach(p=>{
+    const st=profile.products[p.id]||{}, level=Number(st.level||0);
+    const b=document.createElement("button");
+    b.className=level?"secondary":"primary";
+    b.style.marginTop="0";
+    const status=p.pending ? "ŹRÓDŁO DO PODPIĘCIA" : ("Poziom "+level+"/5");
+    b.innerHTML=(level?"✓ ":"▶ ")+p.name+"<br><small>"+status+"</small>";
+    b.onclick=()=>openProductLesson(p.id);
+    grid.appendChild(b);
+  });
+  const sourced=PRODUCT_CATALOG.filter(p=>!p.pending);
+  const allSourcedDone=sourced.every(p=>Number((profile.products[p.id]||{}).level||0)>=1);
+  document.getElementById("day2Completion")?.classList.toggle("hidden",!allSourcedDone);
+}
+
+function openProductLesson(id){
+  const p=PRODUCT_CATALOG.find(x=>x.id===id);
+  if(!p)return;
+  activeProductId=id;
+  const profile=productProfile(),st=profile.products[id]||{};
+  document.getElementById("productLesson").classList.remove("hidden");
+  document.getElementById("productLessonTitle").textContent=p.name;
+  document.getElementById("productLessonStatus").textContent=p.pending ? "KARTA OCZEKUJE NA ŹRÓDŁO" : ("POZIOM "+Number(st.level||0)+"/5");
+  document.getElementById("productRecall").value=st.recall||"";
+  document.getElementById("productRecall2").value=st.recall2||"";
+  document.getElementById("productPractice").value=st.practice||"";
+  // If the learner has already confirmed their own knowledge, reopen the full
+  // learning path immediately. Do not force a second click on "Zatwierdź".
+  const alreadyConfirmed=!!st.recallConfirmed;
+  document.getElementById("productComparison").classList.toggle("hidden",!alreadyConfirmed);
+  const practiceFeedback=document.getElementById("productPracticeFeedback");
+  if(practiceFeedback){
+    practiceFeedback.classList.toggle("hidden",!st.practiceChecked);
+    if(st.practiceChecked) practiceFeedback.innerHTML="<b>Twoje pytania są zapisane.</b> Możesz ponownie kliknąć „Sprawdź moje pytania”, aby zobaczyć podpowiedzi.";
+  }
+  document.getElementById("productConfirmStatus").classList.toggle("hidden",!alreadyConfirmed);
+  document.getElementById("productHint").classList.toggle("hidden",!alreadyConfirmed);
+  document.getElementById("productHintBtn").classList.toggle("hidden",true);
+  document.getElementById("productResult").classList.add("hidden");
+  document.getElementById("productRecallBtn").disabled=alreadyConfirmed;
+  document.getElementById("productRecallBtn").textContent=alreadyConfirmed?"✓ Wiedza zatwierdzona":"Zatwierdź moją wiedzę";
+  document.getElementById("productCardHeadline").textContent=p.name+" — karta szkoleniowa";
+  document.getElementById("productDatabaseAnswer").innerHTML=p.database;
+  document.getElementById("productUserAnswer").textContent=st.recall||"";
+  document.getElementById("productCompareNote").textContent="";
+  document.getElementById("productKeyPoints").innerHTML="<ul>"+p.keyPoints.map(x=>"<li>"+x+"</li>").join("")+"</ul>";
+  document.getElementById("productComposition").innerHTML="<p>"+p.composition+"</p>";
+  document.getElementById("productHighlights").innerHTML="<ul>"+p.highlights.map(x=>"<li>"+x+"</li>").join("")+"</ul>";
+  document.getElementById("productUse").innerHTML="<p>"+p.use+"</p>";
+  document.getElementById("productPracticePrompt").textContent=p.practice;
+  renderProductQuiz(p,st.quizAnswers||[]);
+  if(Number.isFinite(Number(st.quizScore))){
+    const qr=document.getElementById("productQuizResult");
+    const qf=document.getElementById("productQuizFeedback");
+    if(qr&&qf){
+      qr.classList.remove("hidden");
+      qf.innerHTML="<b>Ostatni wynik: "+Number(st.quizScore||0)+"/"+p.quiz.length+"</b><br>"+(Number(st.quizScore||0)===p.quiz.length?"Quiz zaliczony. Możesz przejść dalej.":"Warto powtórzyć pytania zaznaczone wcześniej.");
+    }
+  }
+  document.getElementById("productLesson").scrollIntoView({behavior:"smooth"});
+}
+
+function confirmProductRecall(){
+  const a=val("productRecall").trim(), feedback=document.getElementById("productFeedback");
+  if(a.length<10){
+    document.getElementById("productResult").classList.remove("hidden");
+    feedback.innerHTML="<b>Najpierw odpowiedz.</b><br>Napisz własnymi słowami, co już wiesz o tym produkcie.";
+    return;
+  }
+  const p=PRODUCT_CATALOG.find(x=>x.id===activeProductId); if(!p)return;
+  const profile=productProfile();
+  if(!profile.products[activeProductId])profile.products[activeProductId]={};
+  profile.products[activeProductId].recall=a;
+  profile.products[activeProductId].recallConfirmed=true;
+  profile.products[activeProductId].level=Math.max(Number(profile.products[activeProductId].level||0),1);
+  writeDuplikacjaProfile(profile,true);
+
+  document.getElementById("productUserAnswer").textContent=a;
+  document.getElementById("productDatabaseAnswer").innerHTML=p.database;
+  document.getElementById("productCompareNote").textContent=p.pending
+    ? "Nie ma jeszcze zatwierdzonej karty źródłowej dla tego produktu. Nie uczymy się szczegółów z pamięci."
+    : "Porównaj teraz oba pola: co wiedziałeś, czego nie wiedziałeś i co wymaga powtórki.";
+  document.getElementById("productComparison").classList.remove("hidden");
+  document.getElementById("productConfirmStatus").classList.remove("hidden");
+  document.getElementById("productRecallBtn").textContent="✓ Wiedza zatwierdzona";
+  document.getElementById("productRecallBtn").disabled=true;
+  if(!p.pending)document.getElementById("productHintBtn").classList.remove("hidden");
+}
+
+function showProductHint(){
+  const p=PRODUCT_CATALOG.find(x=>x.id===activeProductId); if(!p || p.pending)return;
+  document.getElementById("productHint").classList.remove("hidden");
+  document.getElementById("productHintText").innerHTML=p.database;
+  document.getElementById("productFullCard").innerHTML=buildFullSourceCard(p);
+  document.getElementById("productFullCard").innerHTML=buildFullSourceCard(p);
+  document.getElementById("productRecall2Wrap").classList.remove("hidden");
+  document.getElementById("productPracticeWrap").classList.remove("hidden");
+  document.getElementById("productCheckBtn").classList.remove("hidden");
+}
+
+function renderProductQuiz(p,saved){
+  const box=document.getElementById("productQuiz"), result=document.getElementById("productQuizResult");
+  box.innerHTML=""; result.classList.add("hidden");
+  if(!p.quiz.length){
+    box.innerHTML="<p class='small'>Quiz zostanie dodany po podpięciu karty źródłowej.</p>";
+    return;
+  }
+  p.quiz.forEach((q,i)=>{
+    const wrap=document.createElement("div"); wrap.className="kpi";
+    wrap.innerHTML="<strong>"+(i+1)+". "+q[0]+"</strong><input id='pq"+i+"' placeholder='Twoja odpowiedź'>";
+    if(saved[i])wrap.querySelector("input").value=saved[i];
+    box.appendChild(wrap);
+  });
+}
+
+function normalizeAnswer(s){
+  let t=(s||"").toLowerCase()
+    .replace(/ą/g,"a").replace(/ć/g,"c").replace(/ę/g,"e").replace(/ł/g,"l")
+    .replace(/ń/g,"n").replace(/ó/g,"o").replace(/ś/g,"s").replace(/ź/g,"z")
+    .replace(/ż/g,"z").replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+
+  t=t.replace(/\b(w|we|na|do|dla|z|ze|o|po|przy|pod|nad|od|u)\s+/g," ");
+  t=t.replace(/([a-z]+)(owej|owa|owe|owych|owego|owym|owymi|ami|ach|om|em|ie|ek|ka|ki|ku|ce|cia|ciu|cie|ow|owy)\b/g,"$1");
+  return t.replace(/\s+/g," ").trim();
+}
+function normalizeNumberWords(s){
+  const map={
+    "zero":"0","jeden":"1","jedna":"1","jedno":"1","pierwszy":"1","pierwsza":"1","pierwsze":"1",
+    "dwa":"2","dwie":"2","drugi":"2","druga":"2","drugie":"2",
+    "trzy":"3","trzeci":"3","trzecia":"3","trzecie":"3",
+    "cztery":"4","czwarty":"4","czwarta":"4","czwarte":"4",
+    "piec":"5","pięć":"5","piaty":"5","piąty":"5","piata":"5","piąta":"5","piate":"5","piąte":"5",
+    "szesc":"6","sześć":"6","szosty":"6","szósty":"6",
+    "siedem":"7","osiem":"8","dziewiec":"9","dziewięć":"9","dziesiec":"10","dziesięć":"10"
+  };
+  return (s||"").toLowerCase().replace(/\b(raz|razy)\b/g,"1").replace(/\b(jednokrotnie)\b/g,"1")
+    .split(/\s+/).map(w=>map[w]??w).join(" ");
+}
+function answerMatches(user,expected){
+  const rawU=(user||"").trim(), rawE=(expected||"").trim();
+  if(!rawU)return false;
+
+  const u=normalizeNumberWords(rawU);
+  const variants=rawE.split("|").map(x=>normalizeNumberWords(x)).filter(Boolean);
+
+  // Numeric equivalence: 1 == raz == jeden.
+  if(variants.some(v=>/^\d+$/.test(v)) && /^\d+$/.test(u)) return variants.includes(u);
+
+  if(u===normalizeAnswer(rawE))return true;
+  return variants.some(v=>{
+    if(u===v)return true;
+    const ut=u.split(" "), vt=v.split(" ");
+    if(vt.length===1){
+      return ut.some(w=>w===v || (w.length>=5 && v.length>=5 && (w.startsWith(v)||v.startsWith(w))));
+    }
+    return ut.join(" ").includes(v) || v.includes(ut.join(" "));
+  });
+}
+
+function listAnswerMatches(user, expected, requiredCount){
+  const required=Number(requiredCount||1);
+  let source=(expected||"").split("|").map(x=>normalizeAnswer(x)).filter(Boolean);
+
+  if(required>1 && source.length===1){
+    source=source[0].split(/\s+/).filter(Boolean);
+  }
+
+  const answer=(user||"").split(/[,;\/\n]+|\s+i\s+|\s+oraz\s+/i)
+    .map(x=>normalizeAnswer(x)).filter(Boolean);
+
+  const uniqueAnswer=[...new Set(answer)];
+  const matchedSource=new Set();
+
+  uniqueAnswer.forEach(a=>{
+    source.forEach((item,idx)=>{
+      if(matchedSource.has(idx))return;
+      const exact=a===item;
+      const tolerant=(a.length>=5 && item.length>=5 &&
+        (a.startsWith(item)||item.startsWith(a)));
+      if(exact||tolerant) matchedSource.add(idx);
+    });
+  });
+
+  return matchedSource.size>=required;
+}
+
+function quizAnswerMatches(user, q){
+  const question=(q[0]||"").toLowerCase();
+  const mode=q.answerType||q.type||"single";
+
+  // List question: the learner must give three valid plant sources.
+  // The order is irrelevant and the fourth/additional ingredient (mint oil)
+  // is not required because the question asks for the three main sources.
+  if(mode==="list" || /wymień\s+trzy|jakie\s+trzy/.test(question)){
+    return listAnswerMatches(user,q[1],Number(q.requiredCount||q.count||3));
+  }
+
+  if(mode==="number") return answerMatches(user,q[1]);
+  return answerMatches(user,q[1]);
+}
+
+function checkProductQuiz(){
+  const p=PRODUCT_CATALOG.find(x=>x.id===activeProductId); if(!p||!p.quiz.length)return;
+  let score=0,answers=[],wrong=[];
+  p.quiz.forEach((q,i)=>{
+    const input=document.getElementById("pq"+i);
+    const a=(input?.value||"").trim(); answers.push(a);
+    const ok=quizAnswerMatches(a,q);
+    const wrap=input?.parentElement;
+    if(wrap){
+      wrap.style.border=ok?"2px solid #2e7d32":"2px solid #c62828";
+      wrap.style.background=ok?"#eef8ee":"#fff1f1";
+      let old=wrap.querySelector(".quizFeedback"); if(old)old.remove();
+      const fb=document.createElement("div"); fb.className="quizFeedback";
+      fb.style.marginTop="8px";
+      fb.innerHTML=ok
+        ? "<span style='color:#2e7d32;font-weight:700'>✓ Dobrze</span>"
+        : "<span style='color:#c62828;font-weight:700'>✗ Do poprawy</span><br><b>Poprawna odpowiedź:</b> "+q[1]+"<br><span class='small'>📖 Gdzie szukać: "+(q[2]||"sprawdź odpowiednią sekcję karty")+"</span><br><button class='secondary' type='button' onclick='showProductHint()'>📚 Otwórz kartę</button>";
+      wrap.appendChild(fb);
+    }
+    if(ok)score++; else wrong.push(i+1);
+  });
+  const profile=productProfile();
+  if(!profile.products[activeProductId])profile.products[activeProductId]={};
+  profile.products[activeProductId].quizAnswers=answers;
+  profile.products[activeProductId].quizScore=score;
+  profile.products[activeProductId].quizWrong=wrong;
+  profile.products[activeProductId].level=Math.max(
+    Number(profile.products[activeProductId].level||0),
+    score===p.quiz.length ? 2 : (profile.products[activeProductId].recallConfirmed ? 1 : 0)
+  );
+  writeDuplikacjaProfile(profile,true);
+  renderProductHub();
+  const result=document.getElementById("productQuizResult"),feedback=document.getElementById("productQuizFeedback");
+  result.classList.remove("hidden");
+  feedback.innerHTML="<b>Wynik: "+score+"/"+p.quiz.length+"</b><br>"+(score===p.quiz.length
+    ?"🔥 Wszystko poprawnie. Możesz przejść dalej."
+    :"Masz błędne pytania: <b>"+wrong.join(", ")+"</b>. Zostały podświetlone na czerwono. Przy każdym masz poprawną odpowiedź, wskazówkę, gdzie jej szukać w karcie, oraz przycisk <b>Otwórz kartę</b>.");
+  result.scrollIntoView({behavior:"smooth",block:"center"});
+}
+
+function getPracticeGuide(id){
+  const guides={
+    daynight:{
+      questions:[
+        "Jak wygląda Twój typowy dzień i w którym momencie najbardziej odczuwasz zmęczenie?",
+        "Jak śpisz i jak oceniasz swoją regenerację po nocy?",
+        "Co chciałbyś konkretnie poprawić: energię w ciągu dnia, regenerację czy jakość snu?",
+        "Od jak dawna tak się czujesz i czy próbowałeś już coś z tym zrobić?"
+      ]
+    },
+    myblood:{
+      questions:[
+        "Co dokładnie powoduje Twoją obawę i od kiedy to odczuwasz?",
+        "Czy masz aktualne wyniki badań, o których wspominasz?",
+        "Jak wygląda Twoja dieta i sposób odżywiania na co dzień?",
+        "Co chciałbyś poprawić najbardziej i czy konsultowałeś to już ze specjalistą?"
+      ]
+    },
+    collagen:{
+      questions:[
+        "Co jest dla Ciebie najważniejsze: skóra, włosy, paznokcie czy stawy?",
+        "Co dokładnie chciałbyś poprawić i od kiedy to zauważasz?",
+        "Czy masz jeszcze inne potrzeby, które chciałbyś uwzględnić?",
+        "Co robiłeś do tej pory, żeby poprawić ten obszar?"
+      ]
+    },
+    boreliss:{
+      questions:[
+        "Jak często zdarzają Ci się infekcje i od jak dawna?",
+        "Jak wygląda Twój sen, regeneracja i codzienne obciążenie?",
+        "Czy jest coś, co szczególnie wpływa u Ciebie na samopoczucie?",
+        "Co robisz obecnie, żeby o siebie zadbać?"
+      ]
+    },
+    chlorophyll:{
+      questions:[
+        "Co najbardziej odczuwasz: stres, przemęczenie czy problem z regularnym odżywianiem?",
+        "Jak wygląda Twoja dieta w typowym dniu?",
+        "Od jak dawna masz takie odczucia?",
+        "Co chciałbyś przede wszystkim zmienić w swoim stylu życia?"
+      ]
+    }
+  };
+  return guides[id]||{questions:[
+    "Co dokładnie jest dla Ciebie najważniejsze?",
+    "Od kiedy masz ten problem lub potrzebę?",
+    "Co robiłeś do tej pory?",
+    "Jaki efekt chciałbyś osiągnąć?"
+  ]};
+}
+function checkProductPractice(){
+  if(!activeProductId)return;
+  const text=val("productPractice").trim().toLowerCase();
+  const box=document.getElementById("productPracticeFeedback");
+  if(!box)return;
+  box.classList.remove("hidden");
+  const guide=getPracticeGuide(activeProductId);
+  const questions=text.split(/[?!]+/).map(x=>x.trim()).filter(Boolean);
+  if(questions.length<3){
+    box.innerHTML="<b>Jeszcze nie.</b> Zadaj minimum 3 pytania. Chodzi o poznanie potrzeby klienta, a nie o samą liczbę.";
+    return;
+  }
+  const signals=[
+    /(od kiedy|jak długo|kiedy zacz|od jakiego czasu)/,
+    /(co dokładnie|co jest|co najbardziej|najważ|czego potrzeb|jaki.*cel)/,
+    /(jak wygląda|jak.*dzień|jak.*styl|jak.*sen|jak.*dieta|jak.*odżyw)/,
+    /(co robił|co prób|co stos|co.*do tej pory|czy prób)/
+  ];
+  const covered=signals.filter(r=>r.test(text)).length;
+  const profile=productProfile();
+  if(!profile.products[activeProductId])profile.products[activeProductId]={};
+  const st=profile.products[activeProductId];
+  st.practice=text;
+  st.practiceChecked=true;
+  st.practiceScore=covered>=3?3:(covered>=1?2:1);
+  if(st.practiceScore>=3 && Number(st.quizScore||0)>=PRODUCT_CATALOG.find(x=>x.id===activeProductId).quiz.length)
+    st.level=Math.max(Number(st.level||0),3);
+  writeDuplikacjaProfile(profile,true);
+  renderProductHub();
+  document.getElementById("productLessonStatus").textContent="POZIOM "+Number(st.level||0)+"/5";
+
+  const missing=[];
+  if(!signals[0].test(text))missing.push("od kiedy / jak długo");
+  if(!signals[1].test(text))missing.push("co dokładnie jest najważniejsze");
+  if(!signals[2].test(text))missing.push("kontekst: styl życia, dzień, dieta lub sen");
+  if(!signals[3].test(text))missing.push("co klient robił do tej pory");
+
+  let out="<b>Weryfikacja: "+st.practiceScore+"/3</b><br>";
+  out+=missing.length ? "Warto jeszcze dopytać o: <b>"+missing.join(", ")+"</b>." :
+    "Bardzo dobrze — pytania obejmują problem, kontekst, cel i dotychczasowe działania. ✅";
+  out+="<hr><b>Przykładowe pytania pomocnicze:</b><ul>"+guide.questions.map(q=>"<li>"+q+"</li>").join("")+"</ul>";
+  out+="<p class='small'>To przykłady do nauki na podstawie scenariusza. Nie musisz używać ich słowo w słowo.</p>";
+  box.innerHTML=out;
+}
+
+function checkProductLesson(){
+  const p=PRODUCT_CATALOG.find(x=>x.id===activeProductId);
+  const result=document.getElementById("productResult"),feedback=document.getElementById("productFeedback");
+  result.classList.remove("hidden");
+  if(!p||p.pending){
+    feedback.innerHTML="<b>Ten produkt czeka na zatwierdzoną kartę źródłową.</b>";
+    return;
+  }
+  const profile=productProfile();
+  if(!profile.products[activeProductId])profile.products[activeProductId]={};
+  const st=profile.products[activeProductId];
+  st.recall2=val("productRecall2");
+  st.practice=val("productPractice");
+  if(!st.recallConfirmed){
+    feedback.innerHTML="<b>Najpierw zatwierdź swoją wiedzę.</b>";
+    return;
+  }
+  if(Number(st.quizScore||0)<p.quiz.length){
+    feedback.innerHTML="<b>Najpierw zalicz quiz.</b><br>Masz "+Number(st.quizScore||0)+"/"+p.quiz.length+".";
+    st.level=1;
+    writeDuplikacjaProfile(profile,true);
+    document.getElementById("productLessonStatus").textContent="POZIOM 1/5";
+    return;
+  }
+  if(st.practice.trim().length<30){
+    st.level=2;
+    writeDuplikacjaProfile(profile,true);
+    feedback.innerHTML="<b>Teraz etap 3/5.</b><br>Wpisz minimum 3 pytania, które zadasz klientowi.";
+    document.getElementById("productLessonStatus").textContent="POZIOM 2/5";
+    return;
+  }
+  if(st.recall2.trim().length<30){
+    st.level=3;
+    writeDuplikacjaProfile(profile,true);
+    feedback.innerHTML="<b>Teraz etap 4/5.</b><br>Wpisz minimum 3 rzeczy, które zapamiętałeś po przeczytaniu karty.";
+    document.getElementById("productLessonStatus").textContent="POZIOM 3/5";
+    return;
+  }
+  st.finalChecked=true;
+  st.level=5;
+  writeDuplikacjaProfile(profile,true);
+  renderProductHub();
+  document.getElementById("productLessonStatus").textContent="POZIOM 5/5";
+  feedback.innerHTML="<b>🔥 Produkt opanowany na poziomie 5/5.</b><br>Masz własną wiedzę, zaliczony quiz, pytania do klienta, wiedzę po lekturze i końcowe zaliczenie.";
+}
+
+function calculateProductLevel(id){
+  const p=PRODUCT_CATALOG.find(x=>x.id===id);
+  const st=(productProfile().products[id]||{});
+  if(!p||p.pending)return 0;
+  let level=0;
+  if(st.recallConfirmed) level=1;
+  if(Number(st.quizScore||0)>=p.quiz.length) level=2;
+  if((st.practice||"").trim().length>=30) level=3;
+  if((st.recall2||"").trim().length>=30) level=4;
+  if(st.finalChecked) level=5;
+  return level;
+}
+function updateProductLevel(id){
+  const profile=productProfile();
+  if(!profile.products[id])profile.products[id]={};
+  const st=profile.products[id];
+  st.level=calculateProductLevel(id);
+  writeDuplikacjaProfile(profile,true);
+  const status=document.getElementById("productLessonStatus");
+  if(status)status.textContent="POZIOM "+st.level+"/5";
+  renderProductHub();
+  return st.level;
+}
+
+function autosaveProductField(fieldId,key){
+  if(!activeProductId)return;
+  const value=(document.getElementById(fieldId)?.value||"");
+  const profile=productProfile();
+  if(!profile.products[activeProductId])profile.products[activeProductId]={};
+  profile.products[activeProductId][key]=value;
+  writeDuplikacjaProfile(profile,true);
+}
+
+function saveProductLesson(){
+  if(!activeProductId)return;
+  const p=PRODUCT_CATALOG.find(x=>x.id===activeProductId); if(!p||p.pending)return;
+  const profile=productProfile();
+  if(!profile.products[activeProductId])profile.products[activeProductId]={};
+  const st=profile.products[activeProductId];
+  st.recall=val("productRecall");
+  st.recall2=val("productRecall2");
+  st.practice=val("productPractice");
+  st.recallConfirmed=st.recallConfirmed||st.recall.trim().length>=10;
+  st.hintShown=true;
+  const level=calculateProductLevel(activeProductId);
+  st.level=level;
+  writeDuplikacjaProfile(profile,true);
+  renderProductHub();
+  document.getElementById("productLessonStatus").textContent="POZIOM "+level+"/5";
+  document.getElementById("productFeedback").innerHTML="<b>Postęp zapisany. ✅</b><br>"+p.name+" — poziom "+level+"/5.";
+}
+function completeDay2(){const p=productProfile();p.currentDay=3;p.day2Completed=true;p.lastViewedDay=2;writeDuplikacjaProfile(p,true);renderRoadmap(3);openRoadmapDay(3);}
+function completeDay4Products(){const p=productProfile();p.currentDay=5;p.day4Completed=true;p.lastViewedDay=4;writeDuplikacjaProfile(p,true);renderRoadmap(5);openRoadmapDay(5);}
+const ROADMAP_DAYS = [{"day":1,"stage":"FUNDAMENT","topic":"Model działania"},{"day":2,"stage":"FUNDAMENT","topic":"Twoje PO CO i cel 90 dni"},{"day":3,"stage":"FUNDAMENT","topic":"Lista kontaktów"},{"day":4,"stage":"FUNDAMENT","topic":"Podstawowe produkty"},{"day":5,"stage":"FUNDAMENT","topic":"Zapraszanie"},{"day":6,"stage":"FUNDAMENT","topic":"Pierwsze spotkanie"},{"day":7,"stage":"FUNDAMENT","topic":"Follow-up"},{"day":8,"stage":"FUNDAMENT","topic":"Raport tygodnia"},{"day":9,"stage":"KLIENT","topic":"Analiza zaproszeń"},{"day":10,"stage":"KLIENT","topic":"Rozmowa z klientem"},{"day":11,"stage":"KLIENT","topic":"Dobór produktu"},{"day":12,"stage":"KLIENT","topic":"Rejestracja klienta"},{"day":13,"stage":"KLIENT","topic":"Follow-up klienta"},{"day":14,"stage":"KLIENT","topic":"Test procesu klienta"},{"day":15,"stage":"ROZWÓJ","topic":"Rekomendacje"},{"day":16,"stage":"ROZWÓJ","topic":"Klient a partner"},{"day":17,"stage":"ROZWÓJ","topic":"Rozmowa biznesowa"},{"day":18,"stage":"ROZWÓJ","topic":"Obserwacja rozmowy"},{"day":19,"stage":"ROZWÓJ","topic":"Współprowadzenie"},{"day":20,"stage":"ROZWÓJ","topic":"Zaproszenie biznesowe"},{"day":21,"stage":"ROZWÓJ","topic":"Test zaproszenia partnera"},{"day":22,"stage":"PIERWSZY PARTNER","topic":"Plan marketingowy"},{"day":23,"stage":"PIERWSZY PARTNER","topic":"Pierwszy partner"},{"day":24,"stage":"PIERWSZY PARTNER","topic":"Pierwsze wdrożenie"},{"day":25,"stage":"PIERWSZY PARTNER","topic":"Lista partnera"},{"day":26,"stage":"PIERWSZY PARTNER","topic":"Zaproszenia partnera"},{"day":27,"stage":"PIERWSZY PARTNER","topic":"Follow-up partnera"},{"day":28,"stage":"PIERWSZY PARTNER","topic":"Budowanie kolejnych partnerów"},{"day":29,"stage":"PIERWSZY PARTNER","topic":"Test wdrożenia"},{"day":30,"stage":"PIERWSZY PARTNER","topic":"Audyt 30 dni"},{"day":31,"stage":"LIDER","topic":"Rola lidera"},{"day":32,"stage":"LIDER","topic":"Poznaj swoich ludzi"},{"day":33,"stage":"LIDER","topic":"Plan 7 dni"},{"day":34,"stage":"LIDER","topic":"Coaching"},{"day":35,"stage":"LIDER","topic":"Raport lidera"},{"day":36,"stage":"LIDER","topic":"Wdrożenie: PO CO"},{"day":37,"stage":"LIDER","topic":"Wdrożenie: model"},{"day":38,"stage":"LIDER","topic":"Wdrożenie: produkty"},{"day":39,"stage":"LIDER","topic":"Wdrożenie: lista"},{"day":40,"stage":"LIDER","topic":"Wdrożenie: zaproszenie"},{"day":41,"stage":"PROWADZENIE","topic":"Pierwsze działania partnera"},{"day":42,"stage":"PROWADZENIE","topic":"Raport partnera"},{"day":43,"stage":"PROWADZENIE","topic":"Diagnoza rozmowy"},{"day":44,"stage":"PROWADZENIE","topic":"Prowadzenie 20%"},{"day":45,"stage":"PROWADZENIE","topic":"Prowadzenie 40%"},{"day":46,"stage":"PROWADZENIE","topic":"Trudne pytania"},{"day":47,"stage":"PROWADZENIE","topic":"Prowadzenie 50%"},{"day":48,"stage":"PROWADZENIE","topic":"Follow-up"},{"day":49,"stage":"PROWADZENIE","topic":"Pełna rozmowa"},{"day":50,"stage":"PROWADZENIE","topic":"Test lidera"},{"day":51,"stage":"PIERWSZY LIDER","topic":"Analiza zespołu"},{"day":52,"stage":"PIERWSZY LIDER","topic":"Cel pierwszego lidera"},{"day":53,"stage":"PIERWSZY LIDER","topic":"Plan 30 dni"},{"day":54,"stage":"PIERWSZY LIDER","topic":"Uczenie zapraszania"},{"day":55,"stage":"PIERWSZY LIDER","topic":"Obserwacja działań"},{"day":56,"stage":"PIERWSZY LIDER","topic":"Analiza wyników"},{"day":57,"stage":"PIERWSZY LIDER","topic":"Brak aktywności"},{"day":58,"stage":"PIERWSZY LIDER","topic":"Coaching blokady"},{"day":59,"stage":"PIERWSZY LIDER","topic":"Samodzielność partnera"},{"day":60,"stage":"PIERWSZY LIDER","topic":"Test lidera"},{"day":61,"stage":"DUPLIKACJA","topic":"Przejęcie nowej osoby"},{"day":62,"stage":"DUPLIKACJA","topic":"Diagnoza PO CO"},{"day":63,"stage":"DUPLIKACJA","topic":"Plan 7 dni dla nowej osoby"},{"day":64,"stage":"DUPLIKACJA","topic":"Coaching bez wyręczania"},{"day":65,"stage":"DUPLIKACJA","topic":"Pierwsze zaproszenia"},{"day":66,"stage":"DUPLIKACJA","topic":"Pierwsze spotkanie"},{"day":67,"stage":"DUPLIKACJA","topic":"Raport i diagnoza"},{"day":68,"stage":"DUPLIKACJA","topic":"Podstawy produktu"},{"day":69,"stage":"DUPLIKACJA","topic":"Ćwiczenie z AI"},{"day":70,"stage":"DUPLIKACJA","topic":"Test pierwszej duplikacji"},{"day":71,"stage":"DUPLIKACJA 2. POZIOM","topic":"Uczenie rozmowy produktowej"},{"day":72,"stage":"DUPLIKACJA 2. POZIOM","topic":"Uczenie prezentacji"},{"day":73,"stage":"DUPLIKACJA 2. POZIOM","topic":"Uczenie rejestracji"},{"day":74,"stage":"DUPLIKACJA 2. POZIOM","topic":"Uczenie follow-upu"},{"day":75,"stage":"DUPLIKACJA 2. POZIOM","topic":"Klient → partner"},{"day":76,"stage":"DUPLIKACJA 2. POZIOM","topic":"Uczenie rozmowy biznesowej"},{"day":77,"stage":"DUPLIKACJA 2. POZIOM","topic":"Symulacja AI"},{"day":78,"stage":"DUPLIKACJA 2. POZIOM","topic":"Obserwacja realnej rozmowy"},{"day":79,"stage":"DUPLIKACJA 2. POZIOM","topic":"Feedback"},{"day":80,"stage":"DUPLIKACJA 2. POZIOM","topic":"Test drugiej warstwy"},{"day":81,"stage":"GŁĘBOKA DUPLIKACJA","topic":"Ania wdraża Tomka"},{"day":82,"stage":"GŁĘBOKA DUPLIKACJA","topic":"Obserwacja duplikacji"},{"day":83,"stage":"GŁĘBOKA DUPLIKACJA","topic":"Prowadzenie PO CO"},{"day":84,"stage":"GŁĘBOKA DUPLIKACJA","topic":"Lista i zaproszenie"},{"day":85,"stage":"GŁĘBOKA DUPLIKACJA","topic":"Pierwsze działanie"},{"day":86,"stage":"GŁĘBOKA DUPLIKACJA","topic":"Ocena jakości duplikacji"},{"day":87,"stage":"CERTYFIKACJA","topic":"Test sytuacyjny: zaproszenia"},{"day":88,"stage":"CERTYFIKACJA","topic":"Test sytuacyjny: follow-up"},{"day":89,"stage":"CERTYFIKACJA","topic":"Test: wdrożenie nowej osoby"},{"day":90,"stage":"CERTYFIKACJA","topic":"Certyfikacja Duplikacja 2.0"}];
+
+function showRoadmap(){
+  const profile = readDuplikacjaProfile();
+  if(!profile.name) return;
+  if(Number(profile.currentDay||1)>3 && !profile.day3Completed){
+    profile.currentDay=3;
+    writeDuplikacjaProfile(profile,true);
+  }
+  const current = Number(profile.currentDay || 1);
+  document.getElementById("roadmap").classList.remove("hidden");
+  renderRoadmap(current);
+}
+
+function renderRoadmap(current){
+  const done = Math.max(0, current - 1);
+  const profile = readDuplikacjaProfile();
+  const savedLastViewed = Number(localStorage.getItem("duplikacjaLastViewedModule") || 0);
+  const lastViewed = savedLastViewed || Number(profile.lastViewedDay || current);
+  document.getElementById("roadmapBar").style.width = ((done / 90) * 100) + "%";
+  document.getElementById("roadmapProgressText").textContent = done + " / 90 modułów ukończonych";
+  const grid = document.getElementById("dayGrid");
+  grid.innerHTML = "";
+  ROADMAP_DAYS.forEach(function(x){
+    const b = document.createElement("button");
+    b.style.marginTop = "0";
+    b.dataset.day = x.day;
+    b.className = x.day === current ? "primary" : "secondary";
+    if(x.day === lastViewed) {
+      b.classList.add("last-viewed");
+      b.title = "Ostatnio otwarty";
+    }
+    b.disabled = x.day > current;
+    b.textContent = x.day < current ? "✓ " + x.topic : (x.day === current ? "▶ " + x.topic : "🔒 " + x.topic);
+    if(x.day <= current) b.onclick = function(){ openRoadmapDay(x.day); };
+    grid.appendChild(b);
+  });
+}
+
+function openRoadmapDay(day){
+  const profile=readDuplikacjaProfile();
+  const current=Number(profile.currentDay||1);
+  if(day>current) return;
+  profile.lastViewedDay=day;
+  localStorage.setItem("duplikacjaLastViewedModule", String(day));
+  writeDuplikacjaProfile(profile,true);
+
+  // Oznacz dokładnie ten moduł, który użytkownik właśnie otworzył
+  // i utrwal ten wybór także poza profilem, żeby nie znikał po ponownym renderowaniu.
+  document.querySelectorAll("#dayGrid button[data-day]").forEach(function(btn){
+    btn.classList.toggle("last-viewed", Number(btn.dataset.day)===day);
+  });
+
+  document.getElementById("roadmapCurrent").classList.add("hidden");
+  const reviewMode = day < current;
+
+  // Moduł 10 ma własny interfejs. Po przejściu dalej trzeba go usunąć
+  // i przywrócić standardowy interfejs kolejnych modułów.
+  const clientSpecial = document.getElementById("clientConversationSpecial");
+  if(clientSpecial && day!==10) clientSpecial.remove();
+  if(day!==10){
+    const genericAnswer=document.getElementById("roadmapAnswer");
+    const genericAction=document.getElementById("roadmapAction");
+    const genericKpi=document.getElementById("roadmapKpi")?.closest(".kpi");
+    const genericCheck=document.querySelector('#roadmapCurrent > button[onclick="checkGenericDay()"]');
+    if(genericAnswer) genericAnswer.style.display="";
+    if(genericAction) genericAction.style.display="";
+    document.querySelectorAll("#roadmapCurrent > label").forEach(function(el){el.style.display="";});
+    if(genericKpi) genericKpi.style.display="";
+    if(genericCheck) genericCheck.style.display="";
+    const genericResult=document.getElementById("roadmapResult");
+    if(genericResult) genericResult.classList.add("hidden");
+  }
+
+  if(day===1){
+    document.getElementById("day1")?.classList.remove("hidden");
+    document.getElementById("day1")?.scrollIntoView({behavior:"smooth"});
+
+    if(reviewMode){
+      const box=document.getElementById("day1Result");
+      if(box) box.classList.remove("hidden");
+      const fb=document.getElementById("day1Feedback");
+      if(fb) fb.innerHTML="<b>Dzień 1 został już ukończony. ✅</b><br>Tryb podglądu — możesz wrócić do materiału bez zmiany postępu.";
+      document.querySelectorAll("#day1 button.primary").forEach(function(b){ if((b.textContent||"").includes("Ukończ")) b.style.display="none"; });
+    }    return;
+  }
+  if(day===2){
+    document.getElementById("roadmapCurrent").classList.remove("hidden");
+    document.getElementById("roadmapStage").textContent="FUNDAMENT";
+    document.getElementById("roadmapTopic").textContent="Twoje PO CO i cel 90 dni";
+    document.getElementById("roadmapGoal").textContent="Umieć jasno nazwać swój cel, powód działania i wynik 90 dni.";
+    const profile=readDuplikacjaProfile();
+    document.getElementById("roadmapMaterial").textContent=(profile.why||"Zapisz, dlaczego zaczynasz.")+" Cel 90 dni: "+(profile.goal||"—")+"; cel finansowy: "+(profile.money||"—")+" zł/mies.";
+    document.getElementById("roadmapKpi").textContent="KPI: jasny cel + jasne PO CO.";
+    document.getElementById("roadmapCurrent").scrollIntoView({behavior:"smooth"});
+    return;
+  }
+  if(day===3){
+    document.getElementById("day3")?.classList.remove("hidden");
+    document.getElementById("day3")?.scrollIntoView({behavior:"smooth"});
+
+    if(reviewMode){
+      const box=document.getElementById("day3Result");
+      if(box) box.classList.remove("hidden");
+      const fb=document.getElementById("day3Feedback");
+      if(fb) fb.innerHTML="<b>Dzień 3 został już ukończony. ✅</b><br>Tryb podglądu — możesz wrócić do materiału bez zmiany postępu.";
+      document.querySelectorAll("#day3 button.primary").forEach(function(b){ if((b.textContent||"").includes("Ukończ")) b.style.display="none"; });
+    }    return;
+  }
+  if(day===4){
+    document.getElementById("day2ProductHub")?.classList.remove("hidden");
+    renderProductHub();
+    document.getElementById("day2ProductHub")?.scrollIntoView({behavior:"smooth"});
+    return;
+  }
+
+  if(day===5){
+    document.getElementById("roadmapCurrent").classList.remove("hidden");
+    document.getElementById("roadmapAnswer").style.display="none";
+    document.getElementById("roadmapAction").style.display="none";
+    document.querySelectorAll("#roadmapCurrent > label").forEach(function(el){ el.style.display="none"; });
+    document.getElementById("roadmapResult").classList.add("hidden");
+    document.getElementById("roadmapKpi")?.closest(".kpi")?.style.setProperty("display","none");
+    const genericCheck5=document.querySelector('#roadmapCurrent > button[onclick="checkGenericDay()"]');
+    if(genericCheck5) genericCheck5.style.display="none";
+    document.getElementById("roadmapStage").textContent="FUNDAMENT";
+    document.getElementById("roadmapTopic").textContent="Moduł 5 — Zapraszanie";
+    document.getElementById("roadmapGoal").textContent="Umieć zaprosić drugą osobę do rozmowy lub materiału i ustalić konkretny następny krok.";
+    const p5=readDuplikacjaProfile();
+    const completed5=!!p5.day5InviteCompleted;
+    document.getElementById("roadmapMaterial").innerHTML=
+      "<div class='kpi'><b>🎯 CEL</b><p>Zaproszenie nie jest prezentacją. Jego celem jest <b>doprowadzić do konkretnego kolejnego kroku</b>: rozmowy, spotkania albo obejrzenia materiału.</p></div>"+
+      "<div class='kpi'><b>🧭 PROSTY SCHEMAT</b><p><b>Kontakt → zainteresowanie → zaproszenie → kontrakt → termin → follow-up.</b></p></div>"+
+      "<div class='kpi'><b>🤝 KONTRAKTOWANIE — 5 ELEMENTÓW</b><ol><li>Czy masz teraz chwilę?</li><li>Jeżeli wyślę Ci materiał, kiedy możesz go obejrzeć?</li><li>Do której godziny / którego dnia?</li><li>Kiedy wracamy do rozmowy?</li><li>Na ten numer / przez ten kanał mogę się z Tobą skontaktować?</li></ol></div>"+
+      `<details class='kpi' open><summary><b>📚 BAZA WIEDZY — JAK ZAPRASZAĆ PROFESJONALNIE</b></summary>
+<p><b>Najważniejsza zasada:</b> zaproszenie nie polega na tym, żeby od razu opowiedzieć człowiekowi o biznesie. Najpierw budujesz relację, słuchasz, odkrywasz jego sytuację i dopiero wtedy — jeśli pojawi się naturalna potrzeba — proponujesz kolejny krok.</p>
+<p>To jest spójne z podejściem Worre'a: <b>zadawanie dobrych pytań buduje relację i zaufanie</b>, a przy follow-upie ważne jest podtrzymanie rozmowy zamiast wymuszania decyzji po pierwszym kontakcie. </p>
+<div class='kpi'><b>☎️ 1. OSOBA, Z KTÓRĄ DAWNO NIE ROZMAWIAŁEŚ/AŚ — NIE ZACZYNAJ OD BIZNESU</b>
+<p><b>Pierwszy kontakt:</b> „Cześć, co u Ciebie? Jak tam praca? Jak biznes? A zdrowie? Co się u Ciebie ostatnio dzieje?”</p>
+<p><b>Twoje zadanie:</b> nie czekaj na swoją kolej. Słuchaj. Dopytuj. Zapamiętaj, co jest dla tej osoby ważne.</p>
+<p>Jeżeli zaczyna narzekać na pracę, biznes, pieniądze, czas, zdrowie albo mówi o czymś, co chciałaby zmienić — <b>nie wyskakuj od razu z propozycją.</b></p>
+<p><b>Po 1–2 dniach możesz wrócić:</b> „Słuchaj, jak ostatnio rozmawialiśmy, mówiłeś o [konkretny temat]. Mówiłeś serio, że chciałbyś to zmienić?”</p>
+<p>Jeżeli potwierdzi: <b>„Wiesz co, nie chcę Ci niczego obiecywać, ale być może będę mógł Ci w tym temacie pomóc. Możemy się spotkać i pogadać?”</b></p>
+<p><b>Najpierw człowiek, potem potrzeba, dopiero później rozwiązanie.</b></p></div>
+<div class='kpi'><b>⭐ 2. EKSPERT — PROŚBA O OPINIĘ, NIE „PREZENTACJA BIZNESU”</b>
+<p>To może być przedsiębiorca, osoba doświadczona, ktoś z rodziny lub znajomy, którego zdanie naprawdę cenisz.</p>
+<p><b>Zaproszenie:</b> „Słuchaj, poznałem ostatnio bardzo ciekawy temat i chciałbym zasięgnąć Twojej opinii. Zawsze miałeś nosa do biznesu i dlatego właśnie pomyślałem o Tobie. Mogę Ci to pokazać i powiesz mi, co o tym sądzisz?”</p>
+<p>Nie udawaj eksperta i nie manipuluj. <b>Jeżeli naprawdę cenisz jego opinię — powiedz to.</b></p></div>
+<div class='kpi'><b>👤 3. ZNAJOMY / OSOBA, Z KTÓRĄ MASZ DOBRY KONTAKT</b>
+<p><b>„Słuchaj, poznałem ostatnio coś ciekawego i chciałbym Ci o tym opowiedzieć. Wolałbym opowiedzieć Ci o tym na spokojnie przy spotkaniu. Kiedy masz chwilę — jutro czy pojutrze?”</b></p>
+<p>Następnie zawężasz termin: <b>„Bardziej przed południem czy po południu?”</b> → <b>„11:00 czy 16:00?”</b></p>
+<p>Na końcu: <b>„Super, czyli czwartek, 16:00. Umawiamy się na tę rozmowę?”</b></p></div>
+<div class='kpi'><b>💼 4. PRZEDSIĘBIORCA</b>
+<p><b>„Słuchaj, poznałem ostatnio ciekawy model biznesowy i pomyślałem, że może Cię zainteresować. Chciałbym z Tobą o nim porozmawiać. To nie jest temat na telefon — jak się spotkamy, chętnie Ci o nim opowiem. Kiedy masz czas — jutro czy pojutrze?”</b></p>
+<p>Jeżeli pyta <b>„O co chodzi?”</b>: <b>„Rozwijam biznes międzynarodowo i chciałbym porozmawiać z Tobą o pewnych możliwościach. Tylko wiesz co — ciężko mi sensownie opowiedzieć o tym przez telefon, bo jest kilka rzeczy, które muszę Ci pokazać. To tak, jakbym chciał Ci sprzedać mieszkanie i pokazywał je przez dziurkę od klucza. Kupiłbyś takie? 😉 No właśnie. Lepiej spotkajmy się przy kawie i spokojnie pogadamy.”</b></p></div>
+<div class='kpi'><b>🎯 5. OSOBA Z POLECENIA — WYKORZYSTAJ RELACJĘ I LEKKI HUMOR</b>
+<p><b>Start:</b> „Słuchaj, nasz wspólny znajomy [imię] polecił mi Ciebie jako taką konkretną, przedsiębiorczą osobę. Ale powiedz mi — mówił to serio czy trochę żartował?” 😉</p>
+<p>Najczęściej druga osoba zareaguje żartem albo potwierdzeniem. Wtedy możesz powiedzieć:</p>
+<p><b>„No dobra, to super. A mówił Ci już, o co chodzi?”</b></p>
+<p>Jeżeli odpowie, że nie:</p>
+<p><b>„Wiesz co, rozmawiałem z nim o ciekawym projekcie biznesowym i właśnie powiedział mi, że jesteś osobą energiczną, przedsiębiorczą i że warto z Tobą porozmawiać. Chciałbym Ci o tym opowiedzieć. Kiedy dysponujesz czasem, żebyśmy mogli się spotkać?”</b></p>
+<p>Następnie daj <b>alternatywę</b>: „Bardziej początek tygodnia czy koniec tygodnia?” → „Przed południem czy po południu?” → konkretny termin.</p>
+<p><b>Cel:</b> naturalnie wykorzystać rekomendację i doprowadzić do konkretnego spotkania — bez robienia całej rozmowy przez telefon.</p></div>
+<div class='kpi'><b>📞 6. GOTOWY SCHEMAT UMAWIANIA SPOTKANIA</b>
+<p><b>Krok 1 — ograniczenie czasu:</b> „Słuchaj, bardzo się spieszę, ale muszę Ci szybko powiedzieć, dlaczego dzwonię.”</p>
+<p><b>Krok 2 — powód:</b> „Poznałem bardzo ciekawy temat i pomyślałem o Tobie.”</p>
+<p><b>Krok 3 — alternatywa:</b> „Kiedy masz czas — jutro czy pojutrze?”</p>
+<p><b>Krok 4 — zawężenie:</b> „Przed południem czy po południu?”</p>
+<p><b>Krok 5 — konkret:</b> „10:00 czy 16:00?”</p>
+<p><b>Krok 6 — potwierdzenie:</b> „Super, czyli [dzień], [godzina]. Pasuje?”</p></div>
+<div class='kpi'><b>📩 7. GDY ZAPRASZASZ DO OBEJRZENIA MATERIAŁU</b>
+<p><b>„Mam materiał, który chciałbym Ci pokazać. Czy jesteś otwarty, żeby go zobaczyć?”</b></p>
+<p>Jeżeli tak: <b>„Kiedy realnie będziesz mógł go obejrzeć — dziś czy jutro?”</b></p>
+<p>Potem: <b>„OK. To o której godzinie mogę wrócić do Ciebie i zapytać, co o tym myślisz?”</b></p>
+<p>Kontrakt: <b>co → kiedy → kiedy wracamy.</b></p></div>
+<div class='kpi'><b>❓ 8. GDY KTOŚ PYTA „O CO CHODZI?”</b>
+<p><b>„Rozwijam biznes międzynarodowo i chciałbym porozmawiać z Tobą o pewnych możliwościach. To nie jest temat na telefon — jest kilka rzeczy, które chciałbym Ci pokazać i opowiedzieć Ci o nich na spokojnie. Spotkajmy się przy kawie, będzie dużo łatwiej. Jutro czy pojutrze?”</b></p>
+<p>Jeżeli sytuacja wymaga krótszej odpowiedzi, powiedz konkretnie, ale nie rób całej rozmowy przez telefon. <b>Celem jest umówienie kolejnego kroku.</b></p></div>
+<div class='kpi'><b>🧠 9. ZASADA, KTÓRĄ NOWA OSOBA MA ZAPAMIĘTAĆ</b>
+<ol><li>Najpierw nawiąż relację.</li><li>Słuchaj.</li><li>Zadawaj pytania.</li><li>Zapamiętaj potrzeby i problemy.</li><li>Nie wciskaj rozwiązania bez kontekstu.</li><li>Jeżeli pojawi się realna potrzeba — wróć do niej.</li><li>Zaproponuj kolejny krok.</li><li>Ustal konkretny termin.</li><li>Zrób dokładnie to, co obiecałeś.</li></ol>
+<p>Worre również podkreśla znaczenie pytań, relacji i dalszego prowadzenia rozmowy zamiast próby zamknięcia wszystkiego przy pierwszym kontakcie. </p></div>
+<div class='kpi'><b>🚫 CZEGO NIE ROBIMY</b><ul><li>Nie odzywamy się po pół roku tylko po to, żeby powiedzieć „mam biznes”.</li><li>Nie robimy prezentacji przez Messenger.</li><li>Nie zasypujemy człowieka informacjami bez jego zgody.</li><li>Nie udajemy, że prosimy o opinię, jeśli tak naprawdę chcemy tylko sprzedać.</li><li>Nie zostawiamy materiału bez ustalenia, kiedy wracamy do rozmowy.</li></ul></div>
+</details>`+
+      "<div class='kpi'><b>❌ NIE RÓB TEGO</b><ul><li>Nie rób całej prezentacji podczas zaproszenia.</li><li>Nie zostawiaj „obejrzyj i daj znać” bez terminu.</li><li>Nie naciskaj na decyzję przed poznaniem potrzeb.</li></ul></div>"+
+      "<hr><div class='kpi'><b>📝 ĆWICZENIE — TWOJE ZAPROSZENIE</b>"+
+      "<p><b>1. Napisz własne zaproszenie</b></p><textarea id='day5Invite' rows='3' placeholder='Napisz krótkie, naturalne zaproszenie.'></textarea>"+
+      "<p><b>2. Napisz 4–5 pytań kontraktujących</b></p><textarea id='day5Contract' rows='3' placeholder='Czas → wykonanie → termin → follow-up → potwierdzenie kontaktu.'></textarea>"+
+      "<p><b>3. Ile realnych zaproszeń wykonasz?</b></p><input id='day5Count' type='number' min='0' placeholder='minimum 5'>"+
+      "<p><b>4. Czy przy każdym zaproszeniu ustalisz konkretny następny krok i termin?</b></p><select id='day5Commit'><option value=''>Wybierz</option><option value='yes'>Tak</option><option value='no'>Nie</option></select>"+
+      "<button class='primary' onclick='checkDay5Invite()'>Sprawdź zaproszenie</button><div id='day5InviteResult' class='result'></div>"+
+      "<button class='primary' id='day5InviteSaveButton' onclick='completeDay5Invite()'>💾 Zapisz i ukończ moduł „Zapraszanie”</button>"+
+      "<div id='day5InviteFeedback' class='result'></div></div>";
+    document.getElementById("day5Invite").value=p5.day5Invite||p5.day4Invite||"";
+    document.getElementById("day5Contract").value=p5.day5Contract||p5.day4Contract||"";
+    document.getElementById("day5Count").value=p5.day5Count||p5.day4Count||"";
+    document.getElementById("day5Commit").value=p5.day5Commit||p5.day4Commit||"";
+    if(completed5){
+      document.getElementById("day5InviteSaveButton")?.style.setProperty("display","none");
+      document.getElementById("day5InviteFeedback").innerHTML="<b>Moduł „Zapraszanie” ukończony. ✅</b><br>Możesz przejść do modułu „Pierwsze spotkanie”.";
+    }
+    document.getElementById("roadmapCurrent").scrollIntoView({behavior:"smooth"});
+    return;
+  }
+
+  if(day===6){
+    document.getElementById("roadmapCurrent").classList.remove("hidden");
+    document.getElementById("roadmapAnswer").style.display="none";
+    document.getElementById("roadmapAction").style.display="none";
+    document.querySelectorAll("#roadmapCurrent > label").forEach(function(el){ el.style.display="none"; });
+    document.getElementById("roadmapResult").classList.add("hidden");
+    document.getElementById("roadmapKpi")?.closest(".kpi")?.style.setProperty("display","none");
+    const genericCheck6=document.querySelector('#roadmapCurrent > button[onclick="checkGenericDay()"]');
+    if(genericCheck6) genericCheck6.style.display="none";
+    document.getElementById("roadmapStage").textContent="ROZMOWA I OBSERWACJA";
+    document.getElementById("roadmapTopic").textContent="Moduł 6 — Pierwsze spotkanie";
+    document.getElementById("roadmapGoal").textContent="Zobaczyć, jak prowadzi rozmowę doświadczona osoba, a następnie przygotować własną rozmowę według kompendium.";
+    const p6=readDuplikacjaProfile();
+    const completed6=!!p6.day6MeetingCompleted;
+    document.getElementById("roadmapMaterial").innerHTML=
+      "<div class='kpi'><b>👀 ETAP 1 — OBSERWUJ</b><p>Weź udział w spotkaniu jako obserwator. Zwróć uwagę na kolejność rozmowy, pytania, słuchanie, prezentację i zakończenie.</p></div>"+
+      "<p><b>Po spotkaniu zapisz:</b></p>"+
+      "<p><b>1. Otwarcie rozmowy</b></p><textarea id='day6Observation1' rows='3' placeholder='Jak rozpoczęto rozmowę? Jakie pytania padły na początku?'></textarea>"+
+      "<p><b>2. Poznanie potrzeb</b></p><textarea id='day6Observation2' rows='3' placeholder='Jakie pytania pomogły poznać sytuację, potrzeby i cele drugiej osoby?'></textarea>"+
+      "<p><b>3. Prezentacja i zakończenie</b></p><textarea id='day6Observation3' rows='3' placeholder='Jak dopasowano prezentację? Jak zakończono rozmowę i ustalono kolejny krok?'></textarea>"+
+      "<button class='primary' onclick='saveDay6Observation()'>💾 Zapisz obserwacje</button><div id='day6ObservationFeedback' class='result'></div>"+
+      "<hr><div class='kpi'><b>📕 KOMPENDIUM ROZMOWY</b><p>Najpierw poznaj człowieka, potem jego sytuację, potrzeby i cele. Dopiero później przechodź do prezentacji i decyzji.</p></div>"+
+      "<div class='kpi'><b>1️⃣ OTWARCIE</b><ul><li>Czym zajmujesz się dzisiaj?</li><li>Jak trafiłeś/aś do tego zawodu lub branży?</li><li>Co sprawiło, że zacząłeś/zaczęłaś robić właśnie to?</li><li>Czy to było Twoje marzenie, czy pojawiła się okazja?</li></ul></div>"+
+      "<div class='kpi'><b>2️⃣ OBECNA SYTUACJA</b><ul><li>Co najbardziej lubisz w swojej obecnej pracy?</li><li>Co najbardziej Ci w niej przeszkadza?</li><li>Co chciałbyś/chciałabyś zmienić?</li><li>Czy wyobrażasz sobie pracować w tym zawodzie do końca życia?</li></ul></div>"+
+      "<div class='kpi'><b>3️⃣ MARZENIA I KIERUNEK</b><ul><li>Gdyby pieniądze nie stanowiły problemu, czym chciałbyś/chciałabyś się zajmować?</li><li>Co było Twoim marzeniem?</li><li>Jak wyglądałoby Twoje idealne życie zawodowe?</li><li>Czego chciałbyś/chciałabyś mieć więcej: czasu, pieniędzy, swobody czy możliwości rozwoju?</li></ul></div>"+
+      "<div class='kpi'><b>4️⃣ POTRZEBA ZMIANY</b><ul><li>Dlaczego właśnie teraz myślisz o zmianie?</li><li>Co się stanie, jeśli za rok nadal będziesz w tej samej sytuacji?</li><li>Jak ważna jest ta zmiana w skali 1–10?</li></ul></div>"+
+      "<div class='kpi'><b>5️⃣ PRZEJŚCIE DO PREZENTACJI</b><p>„Jeżeli dobrze Cię zrozumiałem/am, najważniejsze są dla Ciebie… Czy dobrze to rozumiem?”</p></div>"+
+      "<div class='kpi'><b>6️⃣ SKALA 1–10</b><p>„W skali od 1 do 10, na ile widzisz siebie rozpoczynającego/rozpoczynającą współpracę z nami?”</p><p>Jeżeli np. 6: <b>„Czego brakuje Ci do 10?”</b></p></div>"+
+      "<div class='kpi'><b>7️⃣ WĄTPLIWOŚĆ → ROZWIĄZANIE → POTWIERDZENIE</b><p>Najpierw doprecyzuj wątpliwość, odpowiedz i sprawdź, czy odpowiedź ją wyjaśniła.</p></div>"+
+      "<div class='kpi'><b>8️⃣ FINALIZACJA</b><ul><li>„Co chciałbyś/chciałabyś zrobić jako następny krok?”</li><li>„Kiedy możemy do tego wrócić?”</li><li>„Co potrzebujesz jeszcze wiedzieć, żeby podjąć decyzję?”</li></ul></div>"+
+      "<div class='kpi'><b>🧭 MAPA ROZMOWY</b><p><b>Pytania → słuchanie → pogłębienie → podsumowanie → dopasowana prezentacja → skala 1–10 → odkrycie brakującego elementu → rozwiązanie wątpliwości → konkretny kolejny krok.</b></p></div>"+
+      "<hr><div class='kpi'><b>🎯 WYBIERZ 3 RZECZY NA NAJBLIŻSZĄ ROZMOWĘ</b><p>Wybierz trzy pytania, sposoby prowadzenia rozmowy albo elementy zakończenia, które chcesz świadomie wykorzystać.</p>"+
+      "<p><b>1.</b></p><textarea id='day6Action1' rows='2'></textarea><p><b>2.</b></p><textarea id='day6Action2' rows='2'></textarea><p><b>3.</b></p><textarea id='day6Action3' rows='2'></textarea>"+
+      "<button class='primary' id='day6SaveButton' onclick='completeDay6Meeting()'>💾 Zapisz i ukończ moduł „Pierwsze spotkanie”</button><div id='day6MeetingFeedback' class='result'></div></div>"+
+      "<p class='small'>💡 Nie chodzi o odpytywanie człowieka z listy. Pytania mają prowadzić naturalną rozmowę.</p>";
+    ["day6Observation1","day6Observation2","day6Observation3","day6Action1","day6Action2","day6Action3"].forEach(function(id){const el=document.getElementById(id);if(el)el.value=p6[id]||p6[id.replace("day6","day5")]||"";});
+    if(completed6){document.getElementById("day6SaveButton")?.style.setProperty("display","none");document.getElementById("day6MeetingFeedback").innerHTML="<b>Moduł „Pierwsze spotkanie” ukończony. ✅</b><br>Możesz przejść do modułu „Follow-up”.";}
+    document.getElementById("roadmapCurrent").scrollIntoView({behavior:"smooth"});
+    return;
+  }
+
+  if(day===7){
+    document.getElementById("roadmapCurrent").classList.remove("hidden");
+    document.getElementById("roadmapAnswer").style.display="none";
+    document.getElementById("roadmapAction").style.display="none";
+    document.querySelectorAll("#roadmapCurrent > label").forEach(function(el){ el.style.display="none"; });
+    document.getElementById("roadmapResult").classList.add("hidden");
+    document.getElementById("roadmapKpi")?.closest(".kpi")?.style.setProperty("display","none");
+    const genericCheck7=document.querySelector('#roadmapCurrent > button[onclick="checkGenericDay()"]');
+    if(genericCheck7) genericCheck7.style.display="none";
+    document.getElementById("roadmapStage").textContent="FUNDAMENT";
+    document.getElementById("roadmapTopic").textContent="Moduł 7 — Follow-up";
+    document.getElementById("roadmapGoal").textContent="Umieć wrócić do osoby po rozmowie, odkryć jej wątpliwości i ustalić konkretny następny krok.";
+    const p7=readDuplikacjaProfile();
+    const completed7=!!p7.day7Completed;
+    document.getElementById("roadmapMaterial").innerHTML=
+      "<div class='kpi'><b>🎯 PO CO JEST FOLLOW-UP?</b><p>Follow-up nie oznacza naciskania na decyzję. Jego zadaniem jest <b>utrzymać rozmowę, odpowiedzieć na pytania i doprowadzić do kolejnego konkretnego kroku</b>.</p></div>"+
+      "<div class='kpi'><b>1️⃣ ZANIM SIĘ ODEZWIESZ</b><ul><li>Przypomnij sobie, o czym rozmawialiście.</li><li>Sprawdź, co obiecałeś/aś zrobić.</li><li>Wróć w ustalonym terminie.</li></ul></div>"+
+      "<div class='kpi'><b>2️⃣ PIERWSZE PYTANIE</b><p>„Co najbardziej Ci się spodobało / co było dla Ciebie najciekawsze?”</p></div>"+
+      "<div class='kpi'><b>3️⃣ SKALA 1–10</b><p>„W skali od 1 do 10, gdzie jesteś teraz?”</p><p>Jeżeli np. 6: <b>„Czego brakuje Ci do 10?”</b></p></div>"+
+      "<div class='kpi'><b>4️⃣ WĄTPLIWOŚĆ → DOPRECYZOWANIE → ODPOWIEDŹ</b><p>„Co dokładnie masz na myśli?” • „Co jest największą wątpliwością?” • „Czy chodzi bardziej o czas, pieniądze, sposób działania czy coś innego?”</p></div>"+
+      "<div class='kpi'><b>5️⃣ ZAWSZE USTAL NASTĘPNY KROK</b><p>Nie kończ na „przemyśl i daj znać”. Ustal konkretnie co dalej i kiedy wracacie do rozmowy.</p></div>"+
+      "<div class='kpi'><b>🧭 SCHEMAT FOLLOW-UPU</b><p><b>Przypomnij rozmowę → zapytaj, co najbardziej się spodobało → oceń zainteresowanie 1–10 → odkryj, czego brakuje → odpowiedz / znajdź odpowiedź → ustal kolejny krok → wpisz termin follow-upu.</b></p></div>"+
+      "<hr><div class='kpi'><b>📝 ĆWICZENIE — PRZYGOTUJ SWÓJ FOLLOW-UP</b>"+
+      "<p><b>1. Z kim wykonam follow-up?</b></p><textarea id='day7Person' rows='2'></textarea>"+
+      "<p><b>2. Od czego rozpocznę rozmowę?</b></p><textarea id='day7Opening' rows='2' placeholder='Np. „Co najbardziej Ci się spodobało?”'></textarea>"+
+      "<p><b>3. Jakie pytanie zadam, żeby odkryć, czego jeszcze potrzebuje?</b></p><textarea id='day7Question' rows='2'></textarea>"+
+      "<p><b>4. Jaki kolejny krok chcę ustalić?</b></p><textarea id='day7NextStep' rows='2'></textarea>"+
+      "<p><b>5. Kiedy wykonam follow-up?</b></p><input id='day7Date' type='text' placeholder='Np. środa, 18:00'>"+
+      "<button class='primary' id='day7SaveButton' onclick='completeDay7()'>💾 Zapisz i ukończ moduł „Follow-up”</button><div id='day7Feedback' class='result'></div></div>";
+    ["day7Person","day7Opening","day7Question","day7NextStep","day7Date"].forEach(function(id){
+      const el=document.getElementById(id);
+      if(!el)return;
+      const legacyId=id.replace("day7","day6");
+      el.value=p7[id] ?? p7[legacyId] ?? "";
+    });
+    // Dane follow-upu są zapisywane również na bieżąco, nie dopiero po ukończeniu modułu.
+    ["day7Person","day7Opening","day7Question","day7NextStep","day7Date"].forEach(function(id){
+      const el=document.getElementById(id);
+      if(!el)return;
+      el.addEventListener("input", function(){
+        const p=readDuplikacjaProfile();
+        p[id]=el.value;
+        writeDuplikacjaProfile(p,false);
+      });
+      el.addEventListener("change", function(){
+        const p=readDuplikacjaProfile();
+        p[id]=el.value;
+        writeDuplikacjaProfile(p,false);
+      });
+    });
+    if(completed7){
+      document.getElementById("day7SaveButton")?.style.setProperty("display","none");
+      document.getElementById("day7Feedback").innerHTML="<b>Moduł „Follow-up” ukończony. ✅</b><br>Twoje wcześniejsze odpowiedzi są zapisane. Możesz przejść do kolejnego modułu.";
+    }
+    document.getElementById("roadmapCurrent").scrollIntoView({behavior:"smooth"});
+    return;
+  }
+
+  if(day===8){
+    document.getElementById("roadmapCurrent").classList.remove("hidden");
+    document.getElementById("roadmapAnswer").style.display="none";
+    document.getElementById("roadmapAction").style.display="none";
+    document.querySelectorAll("#roadmapCurrent > label").forEach(function(el){ el.style.display="none"; });
+    document.getElementById("roadmapResult").classList.add("hidden");
+    document.getElementById("roadmapKpi")?.closest(".kpi")?.style.setProperty("display","none");
+    const genericCheck8=document.querySelector('#roadmapCurrent > button[onclick="checkGenericDay()"]');
+    if(genericCheck8) genericCheck8.style.display="none";
+    document.getElementById("roadmapStage").textContent="FUNDAMENT";
+    document.getElementById("roadmapTopic").textContent="Raport i audyt pierwszego etapu";
+    document.getElementById("roadmapGoal").textContent="Podsumować wykonane działania, wyciągnąć wnioski i ustalić 3 konkretne priorytety na kolejny etap.";
+    const p8=readDuplikacjaProfile();
+    const report=p8.weeklyReport||{};
+    const profileGoal=p8.goal||"—";
+    const profileMoney=p8.money||"—";
+    document.getElementById("roadmapMaterial").innerHTML=
+      "<div class='kpi'><b>📊 PO CO JEST TEN RAPORT?</b><p>To nie jest kolejny quiz. To krótki <b>audyt pierwszego etapu</b>: co zrobiłeś/aś, czego się nauczyłeś/aś, co nie zadziałało i na czym skupisz się dalej.</p></div>"+
+      "<div class='kpi'><b>🎯 TWÓJ PUNKT ODNIESIENIA</b><p><b>Cel 90 dni:</b> "+escapeHtml(profileGoal)+"</p><p><b>Cel finansowy:</b> "+escapeHtml(profileMoney)+"</p></div>"+
+      "<div class='kpi'><b>1️⃣ CO ZROBIŁEŚ/AŚ?</b><p>Wpisz realne liczby z pierwszego etapu.</p>"+
+      "<p>Nowe kontakty</p><input id='wrContacts' type='number' min='0' placeholder='np. 20'>"+
+      "<p>Zaproszenia</p><input id='wrInvites' type='number' min='0' placeholder='np. 7'>"+
+      "<p>Odbyte rozmowy / spotkania</p><input id='wrMeetings' type='number' min='0' placeholder='np. 3'>"+
+      "<p>Wysłane materiały</p><input id='wrMaterials' type='number' min='0' placeholder='np. 4'>"+
+      "<p>Wykonane follow-upy</p><input id='wrFollowups' type='number' min='0' placeholder='np. 4'>"+
+      "<p>Osoby, które przeszły do kolejnego kroku</p><input id='wrNextSteps' type='number' min='0' placeholder='np. 2'></div>"+
+      "<div class='kpi'><b>2️⃣ CO ZADZIAŁAŁO?</b><textarea id='wrWorked' rows='3' placeholder='Co zrobiłeś/aś najlepiej? Co dało najlepszy efekt?'></textarea></div>"+
+      "<div class='kpi'><b>3️⃣ CO NIE ZADZIAŁAŁO?</b><textarea id='wrHard' rows='3' placeholder='Co było największą trudnością lub blokadą?'></textarea></div>"+
+      "<div class='kpi'><b>4️⃣ CZEGO SIĘ NAUCZYŁEŚ/AŚ?</b><textarea id='wrLearned' rows='4' placeholder='Wymień 3 najważniejsze rzeczy, które wynosisz z pierwszego etapu.'></textarea></div>"+
+      "<div class='kpi'><b>5️⃣ GDZIE JESTEŚ WZGLĘDEM SWOJEGO CELU?</b><p>Na ile od 1 do 10 oceniasz swoje przygotowanie do realizacji celu?</p><input id='wrRating' type='number' min='1' max='10' placeholder='1–10'><p>Co musi się wydarzyć, żeby przesunąć się o 1 punkt wyżej?</p><textarea id='wrNextPoint' rows='3'></textarea></div>"+
+      "<div class='kpi'><b>6️⃣ PLAN NA KOLEJNY ETAP</b><p>Wybierz <b>3 konkretne działania</b>, które wykonasz w kolejnym etapie.</p><textarea id='wrPlan' rows='5' placeholder='1. ...&#10;2. ...&#10;3. ...'></textarea></div>"+
+      "<button class='primary' id='weeklyReportSave' onclick='completeWeeklyReport()'>💾 Zapisz raport i ukończ moduł</button><div id='weeklyReportFeedback' class='result'></div>";
+    const fields=["wrContacts","wrInvites","wrMeetings","wrMaterials","wrFollowups","wrNextSteps","wrWorked","wrHard","wrLearned","wrRating","wrNextPoint","wrPlan"];
+    fields.forEach(function(id){
+      const el=document.getElementById(id); if(!el)return;
+      el.value=report[id] ?? "";
+      const save=function(){
+        const p=readDuplikacjaProfile(); p.weeklyReport=p.weeklyReport||{}; p.weeklyReport[id]=el.value; writeDuplikacjaProfile(p,false);
+      };
+      el.addEventListener("input",save); el.addEventListener("change",save);
+    });
+    if(p8.weeklyReportCompleted){
+      document.getElementById("weeklyReportSave").style.display="none";
+      document.getElementById("weeklyReportFeedback").innerHTML="<b>Raport pierwszego etapu zapisany. ✅</b><br>Możesz przejść do kolejnego modułu.";
+    }
+    document.getElementById("roadmapCurrent").scrollIntoView({behavior:"smooth"});
+    return;
+  }
+
+  if(day===9){
+    document.getElementById("roadmapCurrent").classList.remove("hidden");
+    document.getElementById("roadmapAnswer").style.display="none";
+    document.getElementById("roadmapAction").style.display="none";
+    document.querySelectorAll("#roadmapCurrent > label").forEach(function(el){ el.style.display="none"; });
+    document.getElementById("roadmapResult").classList.add("hidden");
+    document.getElementById("roadmapKpi")?.closest(".kpi")?.style.setProperty("display","none");
+    const genericCheck9=document.querySelector('#roadmapCurrent > button[onclick="checkGenericDay()"]');
+    if(genericCheck9) genericCheck9.style.display="none";
+
+    document.getElementById("roadmapStage").textContent="KLIENT";
+    document.getElementById("roadmapTopic").textContent="Analiza zaproszeń";
+    document.getElementById("roadmapGoal").textContent="Umieć przeanalizować własne zaproszenia, rozpoznać co działało, co blokowało rozmowę i świadomie poprawić kolejny kontakt.";
+
+    const p9=readDuplikacjaProfile();
+    const a=p9.invitationAnalysis||{};
+    const completed9=!!p9.invitationAnalysisCompleted;
+
+    document.getElementById("roadmapMaterial").innerHTML=
+      "<div class='kpi'><b>🎯 PO CO JEST TEN MODUŁ?</b><p>Nie chodzi o ocenianie siebie jako „dobrego” albo „złego” rekrutera. Chodzi o <b>rozłożenie zaproszenia na części</b> i znalezienie jednej rzeczy, którą poprawisz przy następnym kontakcie.</p></div>"+
+      "<div class='kpi'><b>🧭 7 ELEMENTÓW DOBREGO ZAPROSZENIA</b><ol>"+
+      "<li><b>Relacja:</b> czy rozmowa była naturalna i dopasowana do osoby?</li>"+
+      "<li><b>Słuchanie:</b> czy naprawdę słuchałem/am, zamiast czekać na moment, żeby powiedzieć swoje?</li>"+
+      "<li><b>Potrzeba:</b> czy pojawił się konkretny temat, który jest ważny dla tej osoby?</li>"+
+      "<li><b>Ciekawość:</b> czy zaproszenie zostawiło przestrzeń na poznanie tematu, zamiast robić pełną prezentację?</li>"+
+      "<li><b>Kontrakt:</b> czy jasno ustaliliśmy, co druga osoba zrobi i do kiedy?</li>"+
+      "<li><b>Następny krok:</b> czy wiadomo, kiedy i jak wracamy do rozmowy?</li>"+
+      "<li><b>Postawa:</b> czy nie naciskałem/am i potrafiłem/am przyjąć „nie” bez palenia relacji?</li></ol></div>"+
+      "<details class='kpi' open><summary><b>📚 BAZA WIEDZY — JAK ANALIZOWAĆ ZAPROSZENIE</b></summary>"+
+      "<p><b>Jeżeli osoba dawno z Tobą nie rozmawiała:</b> sprawdź, czy najpierw odnowiłeś/aś relację. Nie oceniaj zaproszenia wyłącznie po tym, czy doszło do spotkania.</p>"+
+      "<p><b>Jeżeli osoba sama mówi o problemie lub potrzebie:</b> sprawdź, czy wykorzystałeś/aś jej własne słowa i wróciłeś/aś do tematu w naturalny sposób.</p>"+
+      "<p><b>Jeżeli pytanie „o co chodzi?” pojawiło się za wcześnie:</b> sprawdź, czy zamiast tłumaczyć cały biznes potrafiłeś/aś krótko nazwać temat i zaprosić do rozmowy na żywo.</p>"+
+      "<p><b>Jeżeli osoba powiedziała „muszę się zastanowić”:</b> sprawdź, czy ustaliłeś/aś, nad czym dokładnie chce się zastanowić i kiedy wrócicie do rozmowy.</p>"+
+      "<p><b>Jeżeli zaproszenie nie zadziałało:</b> nie szukaj winy w osobie. Zobacz, który element procesu można poprawić.</p>"+
+      "</details>"+
+      "<div class='kpi'><b>🔎 ANALIZA KONKRETNEGO ZAPROSZENIA</b>"+
+      "<p><b>1. Z kim rozmawiałeś/aś i jaki był kontekst?</b></p><textarea id='iaPerson' rows='2' placeholder='Np. znajomy, z którym nie rozmawiałem od kilku miesięcy; przedsiębiorca; osoba z polecenia'></textarea>"+
+      "<p><b>2. Jak rozpocząłeś/aś rozmowę?</b></p><textarea id='iaOpening' rows='3'></textarea>"+
+      "<p><b>3. Co powiedziała druga osoba, co było dla niej ważne?</b></p><textarea id='iaNeed' rows='3'></textarea>"+
+      "<p><b>4. Jak zaprosiłeś/aś i jaki następny krok zaproponowałeś/aś?</b></p><textarea id='iaInvite' rows='3'></textarea>"+
+      "<p><b>5. Czy był konkretny termin / kontrakt?</b></p><select id='iaContract'><option value=''>Wybierz</option><option value='yes'>Tak</option><option value='partial'>Częściowo</option><option value='no'>Nie</option></select>"+
+      "<p><b>6. Co Twoim zdaniem zadziałało?</b></p><textarea id='iaWorked' rows='3'></textarea>"+
+      "<p><b>7. Co poprawisz przy następnym zaproszeniu?</b></p><textarea id='iaImprove' rows='3'></textarea></div>"+
+      "<div class='kpi'><b>📈 SAMOOCENA</b><p>W skali 1–10: jak oceniasz jakość tego zaproszenia?</p><input id='iaRating' type='number' min='1' max='10' placeholder='1–10'><p><b>Czego brakuje do 10?</b></p><textarea id='iaTo10' rows='3'></textarea></div>"+
+      "<div class='kpi'><b>🚀 JEDNA ZMIANA NA NASTĘPNE ZAPROSZENIE</b><p>Wybierz <b>jedną</b> rzecz, którą świadomie zastosujesz przy kolejnym kontakcie.</p><textarea id='iaNext' rows='3' placeholder='Np. najpierw zadam więcej pytań i dopiero potem zaproszę do rozmowy.'></textarea></div>"+
+      "<button class='primary' id='invitationAnalysisSave' onclick='completeInvitationAnalysis()'>💾 Zapisz analizę i ukończ moduł</button><div id='invitationAnalysisFeedback' class='result'></div>";
+
+    const fields=["iaPerson","iaOpening","iaNeed","iaInvite","iaContract","iaWorked","iaImprove","iaRating","iaTo10","iaNext"];
+    fields.forEach(function(id){
+      const el=document.getElementById(id); if(!el)return;
+      el.value=a[id] ?? "";
+      const save=function(){
+        const p=readDuplikacjaProfile();
+        p.invitationAnalysis=p.invitationAnalysis||{};
+        p.invitationAnalysis[id]=el.value;
+        writeDuplikacjaProfile(p,false);
+      };
+      el.addEventListener("input",save);
+      el.addEventListener("change",save);
+    });
+
+    if(completed9){
+      document.getElementById("invitationAnalysisSave").style.display="none";
+      const doneBox=document.getElementById("invitationAnalysisFeedback");
+      doneBox.innerHTML="<b>Analiza zaproszenia zapisana. ✅</b><br>Twoje odpowiedzi są zachowane.";
+      const nextBtn=document.createElement("button");
+      nextBtn.className="primary";
+      nextBtn.id="invitationAnalysisNext";
+      nextBtn.textContent="➡️ Przejdź do kolejnego modułu";
+      nextBtn.onclick=function(){ openRoadmapDay(10); };
+      doneBox.appendChild(nextBtn);
+    }
+
+    document.getElementById("roadmapCurrent").scrollIntoView({behavior:"smooth"});
+    return;
+  }
+
+
+  if(day===10){
+    document.getElementById("roadmapCurrent").classList.remove("hidden");
+    document.getElementById("roadmapStage").textContent="KLIENT";
+    document.getElementById("roadmapTopic").textContent="Rozmowa z klientem";
+    document.getElementById("roadmapGoal").textContent="Nauczyć się prowadzić rozmowę od problemu klienta do właściwego następnego kroku — bez diagnozowania i bez wciskania produktu.";
+
+    const p10=readDuplikacjaProfile();
+    const saved=p10.clientConversation||{};
+    const completed10=!!p10.clientConversationCompleted;
+
+    document.getElementById("roadmapMaterial").innerHTML=
+      "<div class='kpi'><strong>🎯 Najważniejsza zasada</strong><p>Nie zaczynasz od produktu. Najpierw <b>słuchasz i poznajesz sytuację klienta</b>.</p><p><b>Problem → pytania → potrzeba → dopasowane rozwiązanie → kolejny krok.</b></p><p>Nie diagnozuj chorób ani nie przedstawiaj suplementu jako leku. Jeśli pojawiają się objawy zdrowotne, rozmowa ma służyć poznaniu potrzeb i właściwemu skierowaniu klienta do odpowiedniego specjalisty, gdy jest to potrzebne.</p></div>"+
+      "<div class='kpi'><strong>🧭 Jak prowadzić rozmowę?</strong><ol>"+
+      "<li><b>Otwórz rozmowę:</b> „Opowiedz mi trochę więcej, co się dzieje?”</li>"+
+      "<li><b>Dopytaj:</b> od kiedy, jak to wpływa na codzienne życie, co jest dla klienta najważniejsze.</li>"+
+      "<li><b>Poznaj dotychczasowe działania:</b> co klient już próbował i czego oczekuje.</li>"+
+      "<li><b>Podsumuj:</b> własnymi słowami sprawdź, czy dobrze zrozumiałeś/aś.</li>"+
+      "<li><b>Dopiero potem:</b> zaproponuj kolejny krok adekwatny do potrzeb — bez obiecywania efektów.</li></ol></div>"+
+      "<details class='kpi' open><summary><strong>📚 BAZA WIEDZY — PRZYKŁADOWE PYTANIA</strong></summary>"+
+      "<ul><li>Co jest dla Ciebie w tym problemie najbardziej uciążliwe?</li><li>Od kiedy to obserwujesz?</li><li>Jak wpływa to na Twoje codzienne funkcjonowanie?</li><li>Co do tej pory próbowałeś/aś zrobić, żeby sobie z tym poradzić?</li><li>Co chciałbyś/chciałabyś przede wszystkim poprawić?</li><li>Czy jest coś jeszcze, o czym powinienem/powinnam wiedzieć, zanim porozmawiamy o możliwych rozwiązaniach?</li></ul></details>";
+
+    document.getElementById("roadmapAnswer").style.display="none";
+    document.getElementById("roadmapAction").style.display="none";
+    const genericCheck=document.querySelector('#roadmapCurrent > button[onclick="checkGenericDay()"]');
+    if(genericCheck) genericCheck.style.display="none";
+    const genericResult=document.getElementById("roadmapResult");
+    if(genericResult) genericResult.classList.add("hidden");
+
+    const kpiBox=document.getElementById("roadmapKpi")?.closest(".kpi");
+    if(kpiBox) kpiBox.style.display="none";
+
+    const oldSpecial=document.getElementById("clientConversationSpecial");
+    if(oldSpecial) oldSpecial.remove();
+
+    const wrap=document.createElement("div");
+    wrap.id="clientConversationSpecial";
+    wrap.innerHTML=
+      "<div class='kpi'><strong>2️⃣ Ćwiczenie — klient przedstawia problem</strong><p><b>Klient mówi:</b> „Od jakiegoś czasu mam problemy z bólami kostno-stawowymi i cały czas jestem zmęczony/a.”</p><p>Twoim zadaniem nie jest od razu proponować produkt. Napisz <b>3–5 pytań</b>, które zadasz, żeby lepiej poznać sytuację klienta.</p><textarea id='ccQuestions' rows='6' placeholder='1. ...&#10;2. ...&#10;3. ...'></textarea><button class='secondary' type='button' id='ccCheckQuestions'>🔎 Sprawdź moje pytania</button><div id='ccQuestionFeedback' class='kpi hidden'></div></div>"+
+      "<div class='kpi'><strong>3️⃣ Zadanie w praktyce — przeprowadź rozmowę</strong><p>Przeprowadź jedną prawdziwą rozmowę z klientem. Nie musisz sprzedawać produktu. Skup się na <b>słuchaniu, pytaniach i poznaniu potrzeby</b>.</p><label>Z kim rozmawiałeś/aś i jaki był kontekst?</label><textarea id='ccPerson' rows='2'></textarea><label>Jaki problem lub potrzebę przedstawił klient?</label><textarea id='ccNeed' rows='3'></textarea><label>Jakie pytania zadałeś/aś i czego dowiedziałeś/aś się z rozmowy?</label><textarea id='ccRealQuestions' rows='4'></textarea><label>Jaki ustaliliście następny krok?</label><textarea id='ccNextStep' rows='2'></textarea></div>"+
+      "<div class='kpi'><strong>4️⃣ Refleksja — czego nauczyła Cię rozmowa?</strong><label>Co poszło dobrze?</label><textarea id='ccWorked' rows='3'></textarea><label>Co następnym razem zrobisz inaczej?</label><textarea id='ccImprove' rows='3'></textarea><label>Jak oceniasz swoją rozmowę w skali 1–10?</label><input id='ccRating' type='number' min='1' max='10' placeholder='1–10'><label>Czego zabrakło Ci do 10?</label><textarea id='ccTo10' rows='3'></textarea></div>"+
+      "<button class='primary' id='ccSave' type='button'>💾 Zapisz i ukończ moduł</button><div id='ccFeedback' class='result'></div>";
+    document.getElementById("roadmapCurrent").appendChild(wrap);
+
+    const ids=["ccQuestions","ccPerson","ccNeed","ccRealQuestions","ccNextStep","ccWorked","ccImprove","ccRating","ccTo10"];
+    ids.forEach(function(id){
+      const el=document.getElementById(id);
+      if(!el)return;
+      el.value=saved[id]||"";
+      const save=function(){
+        const p=readDuplikacjaProfile();
+        p.clientConversation=p.clientConversation||{};
+        p.clientConversation[id]=el.value;
+        writeDuplikacjaProfile(p,true);
+      };
+      el.addEventListener("input",save);
+      el.addEventListener("change",save);
+    });
+
+    document.getElementById("ccCheckQuestions").onclick=function(){
+      const text=(document.getElementById("ccQuestions").value||"").trim();
+      const fb=document.getElementById("ccQuestionFeedback");
+      const questions=text.split(/\n+/).map(x=>x.replace(/^\s*\d+[\).\-\:]\s*/,"").trim()).filter(Boolean);
+      const hasTime=/(od kiedy|jak długo|kiedy)/i.test(text);
+      const hasImpact=/(wpływ|utrudnia|uciąż|codzien|samopocz|życi)/i.test(text);
+      const hasAttempts=/(prób|robił|stosował|stosowała|dotychczas)/i.test(text);
+      const hasGoal=/(chciał|chciałaby|oczek|popraw|najważ)/i.test(text);
+      let score=0; if(questions.length>=3)score++; if(hasTime)score++; if(hasImpact)score++; if(hasAttempts)score++; if(hasGoal)score++;
+      fb.classList.remove("hidden");
+      if(questions.length<3){
+        fb.innerHTML="<b>Jeszcze nie zaliczamy tego ćwiczenia.</b><br>Napisz minimum 3 konkretne pytania.";
+      }else{
+        const tips=[];
+        if(!hasTime)tips.push("dopytanie o czas trwania problemu");
+        if(!hasImpact)tips.push("wpływ problemu na codzienne życie");
+        if(!hasAttempts)tips.push("co klient już próbował zrobić");
+        if(!hasGoal)tips.push("co klient chciałby przede wszystkim poprawić");
+        fb.innerHTML="<b>Dobry kierunek. ✅</b><br>Masz "+questions.length+" pytań."+(tips.length?"<br>💡 Warto jeszcze uwzględnić: "+tips.join(", ")+".":"<br>Masz pytania obejmujące najważniejsze obszary rozmowy.");
+      }
+    };
+
+    document.getElementById("ccSave").onclick=function(){
+      const vals={};
+      ids.forEach(function(id){vals[id]=(document.getElementById(id)?.value||"").trim();});
+      const missing=ids.some(id=>!vals[id]);
+      const questions=vals.ccQuestions.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+      const fb=document.getElementById("ccFeedback");
+      if(missing || questions.length<3){
+        fb.innerHTML="<b>Jeszcze nie kończymy modułu.</b><br>Uzupełnij wszystkie pola i wpisz minimum 3 pytania do ćwiczenia.";
+        return;
+      }
+      const p=readDuplikacjaProfile();
+      p.clientConversation=Object.assign(p.clientConversation||{},vals);
+      p.clientConversationCompleted=true;
+      p.currentDay=Math.max(11,Number(p.currentDay||1));
+      p.lastViewedDay=10;
+      localStorage.setItem("duplikacjaLastViewedModule","10");
+      writeDuplikacjaProfile(p,true);
+      fb.innerHTML="<b>Moduł „Rozmowa z klientem” ukończony. ✅</b><br>Twoje odpowiedzi zostały zapisane.";
+      document.getElementById("ccSave").style.display="none";
+      const next=document.createElement("button");
+      next.className="primary";
+      next.textContent="➡️ Przejdź do kolejnego modułu";
+      next.onclick=function(){
+        const p=readDuplikacjaProfile();
+        p.currentDay=Math.max(11,Number(p.currentDay||1));
+        p.lastViewedDay=11;
+        writeDuplikacjaProfile(p,true);
+        renderRoadmap(11);
+        openRoadmapDay(11);
+      };
+      fb.appendChild(next);
+    };
+
+    if(completed10){
+      document.getElementById("ccSave").style.display="none";
+      const fb=document.getElementById("ccFeedback");
+      fb.innerHTML="<b>Moduł „Rozmowa z klientem” jest już ukończony. ✅</b><br>Twoje odpowiedzi są zapisane.";
+      const next=document.createElement("button");
+      next.className="primary";
+      next.textContent="➡️ Przejdź do kolejnego modułu";
+      next.onclick=function(){
+        const p=readDuplikacjaProfile();
+        p.currentDay=Math.max(11,Number(p.currentDay||1));
+        p.lastViewedDay=11;
+        writeDuplikacjaProfile(p,true);
+        renderRoadmap(11);
+        openRoadmapDay(11);
+      };
+      fb.appendChild(next);
+    }
+
+    document.getElementById("roadmapCurrent").scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+
+
+
+  if(day===11){
+    document.getElementById("roadmapCurrent").classList.remove("hidden");
+    document.getElementById("roadmapStage").textContent="KLIENT";
+    document.getElementById("roadmapTopic").textContent="Dobór produktu";
+    document.getElementById("roadmapGoal").textContent="Poznać podstawy doboru rozwiązania do potrzeby klienta — prosto, bez komplikowania procesu.";
+
+    const p11=readDuplikacjaProfile();
+    const saved=p11.productMatching||{};
+    const completed11=!!p11.productMatchingCompleted;
+
+    document.getElementById("roadmapMaterial").innerHTML=
+      "<div class='kpi'><strong>🎯 Zasada modułu</strong>"+
+      "<p>Na tym etapie nie musisz znać na pamięć całej gamy produktów. Twoim zadaniem jest <b>rozpoznać potrzebę klienta i wiedzieć, gdzie szukać właściwego rozwiązania</b>.</p>"+
+      "<p>W DuoLife masz gotowe rozwiązania i pakiety przygotowane przez Radę Naukową. Dlatego nie komplikuj rozmowy — najpierw poznaj potrzebę, a następnie skorzystaj z odpowiedniego pakietu lub materiałów produktowych.</p>"+
+      "<p><b>Rozmowa → potrzeba → odpowiedni pakiet/produkt → przedstawienie rozwiązania.</b></p></div>"+
+      "<div class='kpi'><strong>🧭 Co powinieneś umieć po tym module?</strong><ul>"+
+      "<li>Zadać kilka prostych pytań i zrozumieć, czego klient szuka.</li>"+
+      "<li>Rozpoznać podstawowe obszary potrzeb, np. odporność, energia, detoks, jelita–mózg, longevity, kości/stawy/mięśnie.</li>"+
+      "<li>Wiedzieć, że istnieją gotowe pakiety i korzystać z nich zamiast samodzielnie budować skomplikowaną suplementację.</li>"+
+      "<li>W razie wątpliwości sięgnąć do karty produktu, pakietu lub poprosić o pomoc bardziej doświadczoną osobę.</li></ul></div>"+
+      "<details class='kpi' open><summary><strong>📚 BAZA WIEDZY — PROSTE PYTANIA</strong></summary>"+
+      "<ul><li>Co chciałbyś/chciałabyś przede wszystkim poprawić?</li><li>Co jest dla Ciebie teraz najważniejsze?</li><li>Od kiedy zwracasz na to uwagę?</li><li>Czego szukasz — konkretnego produktu czy kompleksowego rozwiązania?</li></ul></details>";
+
+    document.getElementById("roadmapAnswer").style.display="none";
+    document.getElementById("roadmapAction").style.display="none";
+    const genericCheck=document.querySelector('#roadmapCurrent > button[onclick="checkGenericDay()"]');
+    if(genericCheck) genericCheck.style.display="none";
+    const genericResult=document.getElementById("roadmapResult");
+    if(genericResult) genericResult.classList.add("hidden");
+    const genericKpi=document.getElementById("roadmapKpi")?.closest(".kpi");
+    if(genericKpi) genericKpi.style.display="none";
+
+    const oldSpecial=document.getElementById("productMatchingSpecial");
+    if(oldSpecial) oldSpecial.remove();
+
+    const wrap=document.createElement("div");
+    wrap.id="productMatchingSpecial";
+    wrap.innerHTML=
+      "<div class='kpi'><strong>2️⃣ Ćwiczenie — rozpoznaj potrzebę</strong>"+
+      "<p><b>Klient mówi:</b> „Ostatnio mam mało energii, jestem ciągle zmęczony/a i chciałbym/chciałabym coś z tym zrobić.”</p>"+
+      "<p>Nie musisz dobierać pojedynczych produktów. Napisz, <b>jakie 3 pytania zadasz klientowi</b>, żeby lepiej zrozumieć jego potrzebę, a następnie wskaż, <b>jaki obszar lub gotowy pakiet</b> sprawdziłbyś/sprawdziłabyś w pierwszej kolejności.</p>"+
+      "<label>Twoje 3 pytania</label><textarea id='pmQuestions1' rows='5' placeholder='1. ...&#10;2. ...&#10;3. ...'></textarea>"+
+      "<label>Jaki obszar lub pakiet sprawdzisz?</label><input id='pmProduct1' type='text' placeholder='Np. Energy / inny odpowiedni pakiet'>"+
+      "<button class='secondary' type='button' id='pmCheck'>🔎 Sprawdź kierunek</button><div id='pmFeedback' class='kpi hidden'></div></div>"+
+      "<div class='kpi'><strong>3️⃣ Zadanie w praktyce</strong>"+
+      "<p>Przy najbliższej rozmowie z klientem najpierw poznaj jego potrzebę, a potem skorzystaj z odpowiedniego gotowego rozwiązania lub materiałów produktowych.</p>"+
+      "<label>Jaka była potrzeba klienta?</label><textarea id='pmRealNeed' rows='3'></textarea>"+
+      "<label>Jaki pakiet lub produkt sprawdziłeś/aś?</label><input id='pmRealProduct' type='text'>"+
+      "<label>Dlaczego uznałeś/aś, że pasuje do przedstawionej potrzeby?</label><textarea id='pmRealWhy' rows='3'></textarea></div>"+
+      "<button class='primary' id='pmSave' type='button'>💾 Zapisz i ukończ moduł</button><div id='pmFeedbackSave' class='result'></div>";
+
+    document.getElementById("roadmapCurrent").appendChild(wrap);
+
+    const ids=["pmQuestions1","pmProduct1","pmRealNeed","pmRealProduct","pmRealWhy"];
+    ids.forEach(function(id){
+      const el=document.getElementById(id);
+      if(!el)return;
+      el.value=saved[id]||"";
+      const save=function(){
+        const p=readDuplikacjaProfile();
+        p.productMatching=p.productMatching||{};
+        p.productMatching[id]=el.value;
+        writeDuplikacjaProfile(p,true);
+      };
+      el.addEventListener("input",save);
+      el.addEventListener("change",save);
+    });
+
+    document.getElementById("pmCheck").onclick=function(){
+      const qs=(document.getElementById("pmQuestions1").value||"").trim();
+      const area=(document.getElementById("pmProduct1").value||"").trim();
+      const fb=document.getElementById("pmFeedback");
+      const questions=qs.split(/\n+/).map(x=>x.replace(/^\s*\d+[\).\-\:]\s*/,"").trim()).filter(Boolean);
+      fb.classList.remove("hidden");
+      if(questions.length<3 || !area){
+        fb.innerHTML="<b>Jeszcze nie. 🟡</b><br>Wpisz 3 pytania i wskaż obszar lub gotowy pakiet.";
+        return;
+      }
+      fb.innerHTML="<b>Dobry kierunek. ✅</b><br>Najważniejsze jest to, że najpierw rozpoznajesz potrzebę, a dopiero potem szukasz właściwego pakietu lub rozwiązania. Nie musisz na tym etapie znać całej gamy produktów.";
+    };
+
+    document.getElementById("pmSave").onclick=function(){
+      const vals={};
+      ids.forEach(function(id){vals[id]=(document.getElementById(id)?.value||"").trim();});
+      const questions=vals.pmQuestions1.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+      const missing=ids.some(id=>!vals[id]);
+      const fb=document.getElementById("pmFeedbackSave");
+      if(missing || questions.length<3){
+        fb.innerHTML="<b>Jeszcze nie kończymy modułu.</b><br>Uzupełnij 3 pytania, obszar/pakiet oraz krótkie zadanie z praktyki.";
+        return;
+      }
+      const p=readDuplikacjaProfile();
+      p.productMatching=Object.assign(p.productMatching||{},vals);
+      p.productMatchingCompleted=true;
+      p.currentDay=Math.max(12,Number(p.currentDay||1));
+      p.lastViewedDay=11;
+      writeDuplikacjaProfile(p,true);
+      renderRoadmap(12);
+      openRoadmapDay(12);
+    };
+
+    if(completed11){
+      document.getElementById("pmSave").style.display="none";
+      const fb=document.getElementById("pmFeedbackSave");
+      fb.innerHTML="<b>Moduł „Dobór produktu” jest już ukończony. ✅</b><br>Twoje odpowiedzi są zapisane.";
+      const next=document.createElement("button");
+      next.className="primary";
+      next.textContent="➡️ Przejdź do kolejnego modułu";
+      next.onclick=function(){
+        const p=readDuplikacjaProfile();
+        p.currentDay=Math.max(12,Number(p.currentDay||1));
+        p.lastViewedDay=12;
+        writeDuplikacjaProfile(p,true);
+        renderRoadmap(12);
+        openRoadmapDay(12);
+      };
+      fb.appendChild(next);
+    }
+
+    document.getElementById("roadmapCurrent").scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+
+
+  if(day===12){
+    document.getElementById("roadmapCurrent").classList.remove("hidden");
+    document.getElementById("roadmapStage").textContent="KLIENT";
+    document.getElementById("roadmapTopic").textContent="Rejestracja klienta";
+    document.getElementById("roadmapGoal").textContent="Przeprowadzić klienta od decyzji, przez rejestrację i aktywację konta, aż do pierwszego zamówienia.";
+
+    const p12=readDuplikacjaProfile();
+    const saved=p12.clientRegistration||{};
+    const completed12=!!p12.clientRegistrationCompleted;
+
+    document.getElementById("roadmapMaterial").innerHTML=
+      "<div class='kpi'><strong>🎯 Zasada modułu</strong>"+
+      "<p><b>Nie kończymy procesu na samej rejestracji.</b> Klient powinien przejść z Tobą cały pierwszy proces:</p>"+
+      "<p><b>Rejestracja konta → mail aktywacyjny → aktywacja konta → sklep → pierwsze zamówienie razem z klientem.</b></p>"+
+      "<p>Twoim zadaniem jest pomóc klientowi przejść przez proces i pokazać mu dostępne warianty pierwszego zamówienia.</p></div>"+
+      "<div class='kpi'><strong>💰 250 czy 500 punktów?</strong>"+
+      "<p><b>250 pkt</b> — przy pierwszym zamówieniu klient otrzymuje <b>15% rabatu od ceny detalicznej rynkowej</b>. Od każdego kolejnego zamówienia, zgodnie z zasadami programu, korzysta już z <b>pełnego rabatu klubowicza — 30%</b>.</p>"+
+      "<p><b>500 pkt</b> — przy pierwszym zamówieniu klient otrzymuje dodatkowo <b>produkt o wartości ponad 100 zł za niecałe 5 zł</b>. Konkretny produkt może się zmieniać zgodnie z aktualną ofertą, np. Kolagen lub MyBlood.</p>"+
+      "<p>Bonusowy produkt za niecałe 5 zł obniża <b>średnią cenę zakupową pozostałych produktów</b>. W praktyce pierwsze zamówienie za 500 pkt wychodzi więc cenowo bardzo blisko <b>poziomu cen klubowych</b>.</p>"+
+      "<p>Jeżeli klient kontynuuje zakupy na poziomie <b>500 pkt w kolejnych cyklach rozliczeniowych</b>, otrzymuje kolejne bonusy produktowe, a w trzecim cyklu dodatkowo <b>DuoLife Dzień i Noc</b>, którego wartość w cenie klubowej wynosi około 330 zł.</p>"+
+      "<p>Przy pierwszym zamówieniu 500 pkt i kontynuacji przez trzy pierwsze miesiące <b>łączna wartość bonusów produktowych przekracza 750 zł</b>.</p>"+
+      "<p class='muted'><b>Ważne:</b> wartości i produkty bonusowe mogą zależeć od aktualnych zasad programu. Przed rozmową sprawdź aktualne warunki.</p></div>"+
+      "<details class='kpi' open><summary><strong>🗣️ GOTOWY SPOSÓB WYJAŚNIENIA KLIENTOWI</strong></summary>"+
+      "<p>„Przy pierwszym zamówieniu za minimum 250 punktów masz 15% rabatu od ceny detalicznej. Przy kolejnych zamówieniach masz już pełny rabat klubowicza, czyli 30%. Możesz też wybrać wariant 500 punktów. Wtedy przy pierwszym zamówieniu dostajesz dodatkowy produkt o wartości ponad 100 zł za niecałe 5 zł. Ten produkt mocno obniża średnią cenę zakupową pozostałych produktów, więc pierwsze zamówienie wychodzi praktycznie na poziomie cen klubowych. Pokażę Ci oba warianty i sam zdecydujesz, który jest dla Ciebie korzystniejszy.”</p></details>"+
+      "<div class='kpi'><strong>📋 Proces krok po kroku</strong><ol>"+
+      "<li>Pomóż klientowi zarejestrować konto.</li>"+
+      "<li>Poproś klienta o sprawdzenie maila i kliknięcie linku aktywacyjnego.</li>"+
+      "<li>Po aktywacji przejdźcie razem do sklepu.</li>"+
+      "<li>Pokaż klientowi wariant 250 i 500 pkt oraz aktualne korzyści.</li>"+
+      "<li>Zróbcie pierwsze zamówienie razem — nie zostawiaj klienta na tym etapie samego.</li></ol></div>";
+
+    document.getElementById("roadmapAnswer").style.display="none";
+    document.getElementById("roadmapAction").style.display="none";
+    const genericCheck=document.querySelector('#roadmapCurrent > button[onclick="checkGenericDay()"]');
+    if(genericCheck) genericCheck.style.display="none";
+    const genericResult=document.getElementById("roadmapResult");
+    if(genericResult) genericResult.classList.add("hidden");
+    const genericKpi=document.getElementById("roadmapKpi")?.closest(".kpi");
+    if(genericKpi) genericKpi.style.display="none";
+
+    const oldSpecial=document.getElementById("clientRegistrationSpecial");
+    if(oldSpecial) oldSpecial.remove();
+
+    const wrap=document.createElement("div");
+    wrap.id="clientRegistrationSpecial";
+    wrap.innerHTML=
+      "<div class='kpi'><strong>🧪 Przećwicz rozmowę</strong>"+
+      "<p>Przećwicz cały proces z upline'em, znajomym lub inną osobą z zespołu: <b>decyzja klienta → rejestracja → aktywacja maila → omówienie 250/500 pkt → pierwsze zamówienie.</b></p>"+
+      "<p>Druga osoba może wcielić się w klienta i zadawać Ci pytania. Skorzystaj z bazy wiedzy powyżej.</p>"+
+      "<label>☑️ Potwierdź, że przećwiczyłeś/aś cały proces</label><select id='crPractice'><option value=''>Wybierz</option><option value='tak'>Tak</option></select></div>"+
+      "<button class='primary' id='crSave' type='button'>💾 Zapisz i ukończ moduł</button><div id='crFeedback' class='result'></div>";
+
+    document.getElementById("roadmapCurrent").appendChild(wrap);
+
+    const el=document.getElementById("crPractice");
+    el.value=saved.crPractice||"";
+    el.addEventListener("change",function(){
+      const p=readDuplikacjaProfile();
+      p.clientRegistration=p.clientRegistration||{};
+      p.clientRegistration.crPractice=el.value;
+      writeDuplikacjaProfile(p,true);
+    });
+
+    document.getElementById("crSave").onclick=function(){
+      if(!document.getElementById("crPractice").value){
+        document.getElementById("crFeedback").innerHTML="<b>Jeszcze nie kończymy modułu.</b><br>Najpierw przećwicz cały proces i zaznacz potwierdzenie.";
+        return;
+      }
+      const p=readDuplikacjaProfile();
+      p.clientRegistration={crPractice:document.getElementById("crPractice").value};
+      p.clientRegistrationCompleted=true;
+      p.currentDay=Math.max(13,Number(p.currentDay||1));
+      p.lastViewedDay=12;
+      writeDuplikacjaProfile(p,true);
+      renderRoadmap(13);
+      openRoadmapDay(13);
+    };
+
+    if(completed12){
+      document.getElementById("crPractice").value=saved.crPractice||"tak";
+      document.getElementById("crSave").style.display="none";
+      const fb=document.getElementById("crFeedback");
+      fb.innerHTML="<b>Moduł „Rejestracja klienta” jest już ukończony. ✅</b><br>Twoje przećwiczenie procesu jest zapisane.";
+      const next=document.createElement("button");
+      next.className="primary";
+      next.textContent="➡️ Przejdź do kolejnego modułu";
+      next.onclick=function(){
+        const p=readDuplikacjaProfile();
+        p.currentDay=Math.max(13,Number(p.currentDay||1));
+        p.lastViewedDay=13;
+        writeDuplikacjaProfile(p,true);
+        renderRoadmap(13);
+        openRoadmapDay(13);
+      };
+      fb.appendChild(next);
+    }
+
+    document.getElementById("roadmapCurrent").scrollIntoView({behavior:"smooth",block:"start"});
+    return;
+  }
+
+
+  if(day===13){
+    document.getElementById("roadmapCurrent").classList.remove("hidden");
+    document.getElementById("roadmapStage").textContent="KLIENT";
+    document.getElementById("roadmapTopic").textContent="Follow-up klienta";
+    document.getElementById("roadmapGoal").textContent="Nauczyć się wracać do klienta po rozmowie, spotkaniu, materiale lub zakupie — konkretnie, bez nacisku.";
+
+    const p=readDuplikacjaProfile(), saved=p.followUp||{}, completed=!!p.followUpCompleted;
+
+    document.getElementById("roadmapMaterial").innerHTML=
+      "<div class='kpi'><strong>🎯 Co to jest follow-up?</strong><p>Follow-up to <b>powrót do klienta po wcześniejszym kontakcie</b>: rozmowie, spotkaniu, wysłaniu materiału lub zakupie.</p><p>Nie chodzi o naciskanie. Chodzi o sprawdzenie, <b>co klienta zainteresowało, jakie ma pytania lub wątpliwości i jaki jest kolejny krok.</b></p></div>"+
+      "<div class='kpi'><strong>📍 Kiedy robimy follow-up?</strong><ul><li><b>Po spotkaniu</b> — poznajemy reakcję i zainteresowanie.</li><li><b>Po wysłaniu materiału</b> — wcześniej ustalamy konkretny termin kontaktu.</li><li><b>Po zakupie</b> — sprawdzamy, czy klient potrzebuje pomocy.</li><li><b>Po odłożeniu decyzji</b> — wracamy zgodnie z wcześniejszym ustaleniem.</li></ul></div>"+
+      "<div class='kpi'><strong>📞 Po wysłaniu materiału — kontrakt</strong><p>Jeżeli umówiliście dzień kontaktu, nie zaczynaj od: <b>„Czy udało Ci się obejrzeć?”</b>. Wracasz zgodnie z ustaleniem.</p><p><b>Przykład:</b> „Cześć, tak jak się umawialiśmy, dzwonię. Rozumiem, że miałeś już okazję obejrzeć materiał?”</p><p>Jeżeli potwierdza:</p><p><b>„Super. Powiedz mi, co najbardziej Cię zainteresowało w tym materiale?”</b></p><p>Możesz pogłębić: <b>„Co najbardziej zwróciło Twoją uwagę?”</b></p><p>Następnie: <b>„A co chciałbyś jeszcze lepiej zrozumieć albo o co chciałbyś mnie dopytać?”</b></p></div>"+
+      "<div class='kpi'><strong>🧠 Prosty schemat</strong><p><b>Kontrakt → kontakt → zainteresowanie → pogłębienie → pytania/wątpliwości → kolejny krok.</b></p></div>"+
+      "<details class='kpi' open><summary><strong>📚 BAZA GOTOWYCH PYTAŃ</strong></summary><ul><li>„Co najbardziej Cię zainteresowało?”</li><li>„Co najbardziej zwróciło Twoją uwagę?”</li><li>„Co chciałbyś jeszcze lepiej zrozumieć?”</li><li>„O co chciałbyś mnie dopytać?”</li><li>„Co jest dla Ciebie najważniejsze, zanim podejmiesz decyzję?”</li><li>„Czy jest coś, co budzi Twoją wątpliwość?”</li></ul></details>";
+
+    document.getElementById("roadmapAnswer").style.display="none";
+    document.getElementById("roadmapAction").style.display="none";
+    const gc=document.querySelector('#roadmapCurrent > button[onclick="checkGenericDay()"]'); if(gc)gc.style.display="none";
+    const gr=document.getElementById("roadmapResult"); if(gr)gr.classList.add("hidden");
+    const gk=document.getElementById("roadmapKpi")?.closest(".kpi"); if(gk)gk.style.display="none";
+
+    const old=document.getElementById("followUpSpecial"); if(old)old.remove();
+    const wrap=document.createElement("div"); wrap.id="followUpSpecial";
+    wrap.innerHTML="<div class='kpi'><strong>🧪 Przećwicz follow-up</strong><p>Przećwicz jeden scenariusz z upline'em, znajomym albo osobą z zespołu. Druga osoba wciela się w klienta.</p><label>Scenariusz</label><select id='fuScenario'><option value=''>Wybierz</option><option value='material'>Po wysłaniu materiału</option><option value='meeting'>Po spotkaniu</option><option value='purchase'>Po zakupie</option><option value='decision'>Po odłożeniu decyzji</option></select><label>Jak rozpoczniesz rozmowę?</label><textarea id='fuOpening' rows='3'></textarea><label>Jakie pytanie zadasz, żeby poznać zainteresowanie lub wątpliwości?</label><textarea id='fuQuestion' rows='3'></textarea><button class='secondary' type='button' id='fuCheck'>🔎 Sprawdź kierunek</button><div id='fuFeedback' class='kpi hidden'></div></div>"+
+      "<div class='kpi'><strong>🎯 Zadanie w praktyce</strong><p>Przeprowadź jeden prawdziwy follow-up. Celem jest dowiedzieć się, co klient myśli, czego potrzebuje i ustalić kolejny krok.</p><label>Scenariusz</label><select id='fuRealScenario'><option value=''>Wybierz</option><option value='material'>Po wysłaniu materiału</option><option value='meeting'>Po spotkaniu</option><option value='purchase'>Po zakupie</option><option value='decision'>Po odłożeniu decyzji</option></select><label>Co najbardziej zainteresowało klienta albo jaka była jego główna wątpliwość?</label><textarea id='fuRealInsight' rows='3'></textarea><label>Jaki kolejny krok ustaliliście?</label><textarea id='fuRealNext' rows='2'></textarea></div><button class='primary' id='fuSave' type='button'>💾 Zapisz i ukończ moduł</button><div id='fuFeedbackSave' class='result'></div>";
+    document.getElementById("roadmapCurrent").appendChild(wrap);
+    document.getElementById('followUpSpecial').insertAdjacentHTML('afterbegin', `<div class='kpi' id='aiFollowUpPractice'>
+<strong>🤖 Przećwicz follow-up z AI</strong>
+<p>Możesz odpowiadać tekstem albo głosem. Rozmowa jest zapisywana, więc możesz wyjść i później ją wznowić.</p>
+
+<div id='aiFuSavedBox' class='result hidden'>
+  <strong>💾 Masz zapisaną rozmowę.</strong>
+  <p id='aiFuSavedInfo'></p>
+  <button class='secondary' type='button' id='aiFuResume'>▶️ Wznów rozmowę</button>
+  <button class='secondary' type='button' id='aiFuNew'>🆕 Rozpocznij nową</button>
+</div>
+
+<label>Wybierz scenariusz</label>
+<select id='aiFuScenario'>
+<option value='material'>Po otrzymaniu materiału — zainteresowany, ale niezdecydowany</option>
+<option value='meeting'>Po spotkaniu — zainteresowany, ale ma pytania</option>
+<option value='doubt'>„Muszę się zastanowić” — klient ma wątpliwość</option>
+<option value='price'>Klient pyta głównie o cenę</option>
+<option value='time'>Klient mówi, że nie ma czasu</option>
+<option value='skeptic'>Klient jest sceptyczny</option>
+</select>
+
+<button class='secondary' type='button' id='aiFuStart'>▶️ Rozpocznij symulację</button>
+
+<div id='aiFuChat' class='kpi hidden'></div>
+
+<div id='aiFuVoiceTools' class='hidden'>
+  <button class='secondary' type='button' id='aiFuVoice'>🎙️ Odpowiedz głosem</button>
+  <span id='aiFuVoiceStatus' class='muted'></span>
+</div>
+
+<textarea id='aiFuInput' rows='3' class='hidden' placeholder='Napisz albo podyktuj, co powiedziałbyś klientowi...'></textarea>
+
+<div>
+  <button class='secondary hidden' type='button' id='aiFuSend'>Wyślij odpowiedź</button>
+  <button class='secondary hidden' type='button' id='aiFuEvaluate'>🧠 Oceń moją rozmowę</button>
+  <button class='secondary hidden' type='button' id='aiFuReset'>🔄 Zacznij od nowa</button>
+</div>
+
+<div id='aiFuStatus' class='result'></div>
+</div>`);
+
+
+    (function(){
+      const KEY="duplikacja_ai_followup_v60";
+      const OLDKEY="duplikacja_ai_followup_v59";
+      const $=id=>document.getElementById(id);
+
+      function getState(){
+        try{
+          let raw=localStorage.getItem(KEY)||localStorage.getItem(OLDKEY);
+          if(!raw){
+            const p=readDuplikacjaProfile();
+            if(p && p.aiFollowUp) raw=JSON.stringify(p.aiFollowUp);
+          }
+          return raw?JSON.parse(raw):null;
+        }catch(e){return null}
+      }
+
+      function refresh(){
+        const box=$("aiFuSavedBox"), info=$("aiFuSavedInfo");
+        if(!box||!info)return;
+        const s=getState();
+        if(!s||!Array.isArray(s.history)||!s.history.length){
+          box.classList.add("hidden"); return;
+        }
+        const turns=s.history.filter(x=>x.role==="user").length;
+        const when=s.updatedAt?new Date(s.updatedAt).toLocaleString("pl-PL"):"";
+        info.textContent="Scenariusz: "+(s.scenario||"—")+" • Twoje odpowiedzi: "+turns+" • Ostatni zapis: "+when;
+        box.classList.remove("hidden");
+      }
+
+      function saveState(state){
+        try{
+          state.updatedAt=new Date().toISOString();
+          localStorage.setItem(KEY,JSON.stringify(state));
+          const p=readDuplikacjaProfile();
+          p.aiFollowUp=state;
+          writeDuplikacjaProfile(p,true);
+        }catch(e){}
+        refresh();
+      }
+
+      function clearState(){
+        try{
+          localStorage.removeItem(KEY);
+          localStorage.removeItem(OLDKEY);
+          const p=readDuplikacjaProfile();
+          delete p.aiFollowUp;
+          writeDuplikacjaProfile(p,true);
+        }catch(e){}
+        refresh();
+      }
+
+      function esc(t){
+        return String(t).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+      }
+
+      function render(state){
+        const chat=$("aiFuChat"), input=$("aiFuInput");
+        if(!chat||!input)return;
+        chat.innerHTML="";
+        (state.history||[]).forEach(x=>{
+          const p=document.createElement("p");
+          p.innerHTML="<b>"+(x.role==="ai"?"🤖 Klient":"👤 Ty")+":</b> "+esc(x.content);
+          chat.appendChild(p);
+        });
+        chat.classList.remove("hidden");
+        input.classList.remove("hidden");
+        $("aiFuSend")?.classList.remove("hidden");
+        $("aiFuEvaluate")?.classList.remove("hidden");
+        $("aiFuReset")?.classList.remove("hidden");
+        $("aiFuVoiceTools")?.classList.remove("hidden");
+        chat.scrollTop=chat.scrollHeight;
+      }
+
+      function begin(key){
+        const scenario=$("aiFuScenario");
+        if(!scenario)return;
+        const openings={
+          material:"Obejrzałem materiał. Kilka rzeczy mnie zainteresowało, ale jeszcze nie wiem, czy to dla mnie.",
+          meeting:"Po spotkaniu mam kilka pytań. Część rzeczy była ciekawa, ale nie podjąłem jeszcze decyzji.",
+          doubt:"Powiem szczerze, muszę się jeszcze zastanowić. Mam pewną wątpliwość.",
+          price:"Temat jest ciekawy, ale przede wszystkim chciałbym wiedzieć, ile to kosztuje.",
+          time:"Brzmi ciekawie, ale teraz naprawdę nie mam czasu.",
+          skeptic:"Jestem trochę sceptyczny. Nie lubię, kiedy ktoś próbuje mnie do czegoś przekonać."
+        };
+        key=key||scenario.value;
+        scenario.value=key;
+        const state={scenario:key,history:[{role:"ai",content:openings[key]}],active:true};
+        render(state); saveState(state);
+        $("aiFuStatus").textContent="Symulacja rozpoczęta. Odpowiedz tekstem albo głosem.";
+      }
+
+      function resume(){
+        const s=getState();
+        if(!s||!s.history||!s.history.length){
+          $("aiFuStatus").textContent="Nie ma zapisanej rozmowy do wznowienia.";
+          return;
+        }
+        $("aiFuScenario").value=s.scenario||"material";
+        render(s);
+        $("aiFuStatus").textContent="💾 Rozmowa wznowiona dokładnie od ostatniej zapisanej wypowiedzi.";
+        refresh();
+      }
+
+      function reply(t,key,userTurns){
+        const q=t.toLowerCase();
+        const common={
+          material:[
+            ["ile|kwot|zarob|doch[oó]d","Nie mam konkretnej kwoty. Myślałem raczej o czymś, co z czasem mogłoby dawać kilka tysięcy złotych miesięcznie."],
+            ["czas|godzin","Właśnie czasu trochę się obawiam. Mam pracę i nie chcę, żeby to zaczęło zajmować mi całe wieczory."],
+            ["obaw|wątpliw|czego.*brakuje|powstrzym","Największa obawa to chyba to, czy naprawdę da się to połączyć z moją obecną pracą."],
+            ["kolejn|następn|spotka|porozmaw","Jeżeli pokażesz mi konkretnie, jak to wygląda w praktyce, mogę się temu przyjrzeć."]
+          ],
+          meeting:[
+            ["czas|godzin","Mam pracę i rodzinę, więc potrzebuję czegoś, co mogę robić dodatkowo, bez rezygnowania z obecnego zajęcia."],
+            ["obaw|wątpliw|powstrzym","Nie wiem, czy mam wystarczająco dużo czasu i czy potrafiłbym rozmawiać o tym z innymi."],
+            ["co.*ważne|czego.*szuk|potrzeb","Chciałbym przede wszystkim wiedzieć, czy to rzeczywiście może dać mi dodatkowy dochód."],
+            ["kolejn|następn|spotka","Możemy umówić kolejny krok, ale chciałbym wiedzieć, co dokładnie będziemy wtedy robić."]
+          ],
+          doubt:[
+            ["co.*brakuje|dlaczego|wątpliw|obaw","Chyba najbardziej chodzi o czas i o to, czy będę potrafił to robić dobrze."],
+            ["czas","Nie chciałbym zaczynać czegoś, czego później nie będę w stanie regularnie prowadzić."],
+            ["nauc|pomoc|wspar","Jeżeli rzeczywiście jest wsparcie i mogę się tego nauczyć krok po kroku, to byłoby dla mnie ważne."],
+            ["kolejn|następn","Mogę zrobić kolejny krok, jeśli ustalimy konkretnie, co mam teraz sprawdzić."]
+          ],
+          price:[
+            ["250|500|punkt|zamów","Rozumiem. A co dokładnie dostaję w zamian i jak wygląda pierwsze zamówienie?"],
+            ["warto|bonus|produkt","Jeżeli są konkretne korzyści produktowe, to chciałbym je zobaczyć i policzyć."],
+            ["kolejn|następn|spotka","Dobrze, pokaż mi to spokojnie na konkretnym przykładzie."]
+          ],
+          time:[
+            ["ile.*czasu|godzin|czas","Jeżeli na początek wystarczy niewiele czasu, to mogę się temu przyjrzeć."],
+            ["kiedy|termin|jutro|tydzień","Możemy ustalić konkretny termin, ale raczej po pracy."],
+            ["kolejn|następn|spotka","Dobra, możemy umówić krótką rozmowę. Powiedz kiedy."]
+          ],
+          skeptic:[
+            ["dlaczego|dow[oó]d|przykład|konkret","Pokaż mi konkretny przykład i wtedy łatwiej będzie mi się do tego odnieść."],
+            ["obaw|wątpliw","Obawiam się głównie obietnic bez pokrycia i tego, że trzeba będzie namawiać ludzi."],
+            ["czas|praca","Jeżeli można zacząć spokojnie obok obecnej pracy, to brzmi rozsądniej."],
+            ["kolejn|następn|spotka","Możemy zrobić kolejny krok, ale chcę sam wyciągnąć wnioski."]
+          ]
+        };
+        const first={
+          material:"Najbardziej zainteresowała mnie możliwość dodatkowego dochodu, ale nie wiem jeszcze, czy to jest dla mnie.",
+          meeting:"Najbardziej zainteresował mnie sam model działania, ale nie jestem jeszcze pewien, czy chciałbym się w to angażować.",
+          doubt:"Tak, muszę się zastanowić. Nie jestem przekonany, czy to jest odpowiedni moment.",
+          price:"Temat jest ciekawy, ale przede wszystkim chciałbym wiedzieć, ile mnie to będzie kosztować.",
+          time:"Brzmi ciekawie, ale teraz naprawdę nie mam czasu.",
+          skeptic:"Jestem sceptyczny. Nie lubię, kiedy ktoś próbuje mnie do czegoś przekonać."
+        };
+        if(userTurns===1)return first[key]||"Rozumiem. Powiedz mi o tym trochę więcej.";
+        for(const [pat,ans] of (common[key]||[])) if(new RegExp(pat,"i").test(q)) return ans;
+        return "Rozumiem. Dopytaj mnie o to, co jest dla mnie najważniejsze.";
+      }
+
+      if(!window.__duplikacjaAiFuV60){
+        window.__duplikacjaAiFuV60=true;
+
+        document.addEventListener("click",function(e){
+          const id=e.target?.id;
+          if(id==="aiFuStart"){begin($("aiFuScenario")?.value);}
+          else if(id==="aiFuResume"){resume();}
+          else if(id==="aiFuNew"){clearState();begin($("aiFuScenario")?.value);}
+          else if(id==="aiFuSend"){
+            const s=getState(), input=$("aiFuInput");
+            if(!s||!s.active){$("aiFuStatus").textContent="Najpierw rozpocznij albo wznow rozmowę.";return}
+            const t=(input?.value||"").trim();
+            if(!t){$("aiFuStatus").textContent="Wpisz albo podyktuj odpowiedź.";return}
+            s.history.push({role:"user",content:t});
+            const turns=s.history.filter(x=>x.role==="user").length;
+            s.history.push({role:"ai",content:reply(t,s.scenario,turns)});
+            input.value="";
+            render(s);saveState(s);
+          }
+          else if(id==="aiFuReset"){
+            clearState();
+            ["aiFuChat","aiFuInput","aiFuVoiceTools","aiFuSend","aiFuEvaluate","aiFuReset"].forEach(x=>$(x)?.classList.add("hidden"));
+          }
+          else if(id==="aiFuEvaluate"){
+            const s=getState(), users=s?s.history.filter(x=>x.role==="user"):[];
+            if(users.length<2){$("aiFuStatus").textContent="Przeprowadź najpierw kilka wymian zdań.";return}
+            const all=users.map(x=>x.content).join(" ");
+            let score=5;
+            if(/zainteres|najbardziej/i.test(all))score++;
+            if(/wątpliw|obaw|czego.*brakuje/i.test(all))score++;
+            if(/kolejn|następn|ustal|kiedy/i.test(all))score++;
+            if(/musisz|powinieneś|gwarant/i.test(all))score--;
+            $("aiFuStatus").innerHTML="<b>Wstępna ocena treningowa: "+Math.max(1,Math.min(10,score))+"/10</b><br><span class='muted'>Rozmowa jest zapisana i można ją wznowić.</span>";
+          }
+          else if(id==="aiFuVoice"){startVoice();}
+        });
+
+        window.addEventListener("pagehide",function(){
+          const s=getState();
+          if(s?.history?.length)saveState(s);
+        });
+      }
+
+      let recognition=null;
+
+      function focusVoiceInput(){
+        const input=$("aiFuInput");
+        const status=$("aiFuStatus"), vs=$("aiFuVoiceStatus");
+        if(!input)return;
+        input.focus();
+        input.click();
+        vs.textContent="🎙️ Użyj teraz mikrofonu na klawiaturze telefonu. Mów — tekst pojawi się tutaj.";
+        status.textContent="🎙️ Gotowe. Pole odpowiedzi jest aktywne — dotknij ikonę mikrofonu na klawiaturze Samsunga/Gboard i podyktuj odpowiedź.";
+        try{ input.scrollIntoView({behavior:"smooth",block:"center"}); }catch(e){}
+      }
+
+      function startVoice(){
+        // Local content:// HTML cannot obtain microphone permission reliably.
+        // Do not launch Android Files. Instead, focus the text box so the
+        // user's keyboard microphone performs speech-to-text directly into it.
+        focusVoiceInput();
+      }
+
+      refresh();
+    })();
+
+
+
+    const ids=["fuScenario","fuOpening","fuQuestion","fuRealScenario","fuRealInsight","fuRealNext"];
+    ids.forEach(id=>{const el=document.getElementById(id);if(!el)return;el.value=saved[id]||"";const save=()=>{const q=readDuplikacjaProfile();q.followUp=q.followUp||{};q.followUp[id]=el.value;writeDuplikacjaProfile(q,true)};el.addEventListener("input",save);el.addEventListener("change",save)});
+
+    document.getElementById("fuCheck").onclick=()=>{
+      const s=document.getElementById("fuScenario").value,o=document.getElementById("fuOpening").value.trim(),q=document.getElementById("fuQuestion").value.trim(),fb=document.getElementById("fuFeedback");
+      fb.classList.remove("hidden");
+      if(!s||!o||!q){fb.innerHTML="<b>Jeszcze nie. 🟡</b><br>Wybierz scenariusz, wpisz otwarcie i jedno konkretne pytanie.";return}
+      const good=s==="material"?(/uma|ustal|zgodnie|dzwonię|zainteres/i.test(o+" "+q)):/zainteres|zwróci|myślisz|wątpliw|najważ/i.test(q);
+      fb.innerHTML=good?"<b>Dobry kierunek. ✅</b><br>Najpierw nawiązujesz do wcześniejszego kontaktu, a potem poznajesz zainteresowanie lub wątpliwości klienta.":"<b>Sprawdź jeszcze raz. 🟡</b><br>Nie naciskaj na decyzję. Nawiąż do wcześniejszego ustalenia i zapytaj, co klienta zainteresowało albo co budzi jego wątpliwości.";
+    };
+
+    document.getElementById("fuSave").onclick=()=>{
+      const v={};ids.forEach(id=>v[id]=(document.getElementById(id)?.value||"").trim());
+      const fb=document.getElementById("fuFeedbackSave");
+      if(ids.some(id=>!v[id])){fb.innerHTML="<b>Jeszcze nie kończymy modułu.</b><br>Uzupełnij ćwiczenie i wykonaj jeden prawdziwy follow-up.";return}
+      const q=readDuplikacjaProfile();q.followUp=Object.assign(q.followUp||{},v);q.followUpCompleted=true;q.currentDay=Math.max(14,Number(q.currentDay||1));q.lastViewedDay=13;writeDuplikacjaProfile(q,true);renderRoadmap(14);openRoadmapDay(14);
+    };
+
+    if(completed){
+      document.getElementById("fuSave").style.display="none";
+      const fb=document.getElementById("fuFeedbackSave");fb.innerHTML="<b>Moduł „Follow-up klienta” jest już ukończony. ✅</b><br>Twoje odpowiedzi są zapisane.";
+      const next=document.createElement("button");next.className="primary";next.textContent="➡️ Przejdź do kolejnego modułu";next.onclick=()=>{const q=readDuplikacjaProfile();q.currentDay=Math.max(14,Number(q.currentDay||1));q.lastViewedDay=14;writeDuplikacjaProfile(q,true);renderRoadmap(14);openRoadmapDay(14)};fb.appendChild(next);
+    }
+    document.getElementById("roadmapCurrent").scrollIntoView({behavior:"smooth",block:"start"});return;
+  }
+
+  const x=ROADMAP_DAYS[day-1];
+  document.getElementById("roadmapCurrent").classList.remove("hidden");
+  document.getElementById("roadmapStage").textContent=x.stage;
+  document.getElementById("roadmapTopic").textContent=x.topic;
+  document.getElementById("roadmapGoal").textContent="Potrafić wykonać w praktyce: "+x.topic.toLowerCase()+".";
+  const actionMap={
+  2:"Wróć do swojego PO CO, celu 90 dni i konkretnego celu finansowego. Umiej powiedzieć własnymi słowami, po co zaczynasz i co chcesz osiągnąć.",
+  4:"Naucz się pracować z 5 podstawowymi produktami: przypomnij, przeczytaj kartę, porównaj wiedzę, zalicz quiz i przećwicz rozmowę.",
+  5:"Przygotuj naturalne zaproszenie, przećwicz kontraktowanie i wykonaj minimum 5 realnych zaproszeń.",
+  6:"Weź udział w pierwszym spotkaniu jako obserwator. Zwróć uwagę na otwarcie, pytania, poznanie potrzeb, prezentację i ustalenie kolejnego kroku.",
+  7:"Wróć do osób, z którymi już rozmawiałeś/aś, i wykonaj zaplanowany follow-up.",
+  8:"Podsumuj liczbę kontaktów, zaproszeń i rozmów oraz jedną główną blokadę.",
+  9:"Przeanalizuj ostatnie zaproszenia i wskaż jedną rzecz do poprawy.",
+  9:"Przeprowadź rozmowę, w której więcej pytasz i słuchasz niż prezentujesz.",
+  11:"Przećwicz dopasowanie produktu do potrzeby na podstawie pytań.",
+  12:"Przeprowadź z nową osobą proces rejestracji zgodnie z aktualnymi zasadami firmy.",
+  13:"Wykonaj follow-up z osobą po rozmowie produktowej.",
+  14:"Przeprowadź cały podstawowy proces klienta od rozmowy do follow-upu.",
+  15:"Poproś klienta o konkretne polecenie osoby, której może przydać się podobne rozwiązanie.",
+  16:"Wyjaśnij własnymi słowami różnicę między klientem a partnerem.",
+  17:"Przećwicz rozmowę biznesową opartą na pytaniach o sytuację i cele człowieka.",
+  18:"Obserwuj rozmowę mentora i zapisz 5 pytań, które warto naśladować.",
+  19:"Poprowadź uzgodniony fragment rozmowy razem z mentorem.",
+  20:"Wykonaj pierwsze zaproszenie biznesowe.",
+  21:"Doprowadź zaproszoną osobę do rozmowy z Tobą i mentorem.",
+  22:"Wyjaśnij pierwsze trzy poziomy planu marketingowego i warunki ich osiągania.",
+  23:"Doprowadź pierwszego potencjalnego partnera do rozmowy wdrożeniowej.",
+  24:"Poprowadź razem z mentorem fragment pierwszego wdrożenia.",
+  25:"Pomóż partnerowi stworzyć jego własną listę kontaktów.",
+  26:"Pomóż partnerowi wykonać pierwsze zaproszenia.",
+  27:"Przeprowadź follow-up z partnerem i ustal jego następny krok.",
+  28:"Kontynuuj proces pozyskania kolejnych partnerów.",
+  29:"Pokaż mentorowi, jak samodzielnie poprowadzisz pierwsze wdrożenie.",
+  30:"Wykonaj audyt pierwszych 30 dni: klienci, partnerzy, aktywność i kompetencje."
+};
+const specificAction=actionMap[day] || ("Wykonaj w praktyce zadanie związane z: "+x.topic+". Zapisz wynik i jedną rzecz, której się nauczyłeś/aś.");
+document.getElementById("roadmapMaterial").textContent="Temat: "+x.topic+". "+specificAction;
+document.getElementById("roadmapKpi").textContent=day<=30?"KPI: wykonane działanie + liczba realnych aktywności.":day<=60?"KPI: samodzielne wykonanie + wynik zespołu / partnera.":"KPI: samodzielność + zdolność nauczenia tej czynności kolejnej osobie.";
+if(reviewMode){
+  document.getElementById("roadmapAnswer").value=profile["day"+day+"Answer"]||"";
+  document.getElementById("roadmapAction").value=profile["day"+day+"Action"]||"";
+  document.getElementById("roadmapResult").classList.remove("hidden");
+  document.getElementById("roadmapFeedback").innerHTML="<b>Moduł „"+x.topic+"” został już ukończony. ✅</b><br>Tryb podglądu — możesz ponownie przejrzeć materiał i swoje odpowiedzi.";
+  document.querySelectorAll("#roadmapCurrent button.primary").forEach(function(b){ if((b.textContent||"").includes("Ukończ")) b.style.display="none"; });
+}
+document.getElementById("roadmapCurrent").scrollIntoView({behavior:"smooth"});
+}
+
+
+function checkDay5Invite(){
+  const invite=val('day5Invite'), contract=val('day5Contract'), count=Number(val('day5Count')||0), commit=val('day5Commit');
+  const result=document.getElementById('day5InviteResult');
+  if(result)result.classList.remove('hidden');
+  if(invite.length<50){result.innerHTML="<b>Jeszcze nie.</b><br>Napisz pełne, naturalne zaproszenie.";return false;}
+  if(contract.length<50){result.innerHTML="<b>Brakuje kontraktowania.</b><br>Wypisz 4–5 konkretnych pytań.";return false;}
+  if(count<5){result.innerHTML="<b>Jeszcze nie.</b><br>Wykonaj minimum 5 realnych zaproszeń.";return false;}
+  if(commit!=="yes"){result.innerHTML="<b>Brakuje konkretu.</b><br>Przy każdym zaproszeniu ustal następny krok i termin.";return false;}
+  result.innerHTML="<b>Zaproszenie przygotowane. ✅</b><br>Możesz zapisać i ukończyć moduł.";return true;
+}
+function completeDay5Invite(){
+  if(!checkDay5Invite())return;
+  const p=readDuplikacjaProfile();
+  p.day5Invite=val('day5Invite');p.day5Contract=val('day5Contract');p.day5Count=val('day5Count');p.day5Commit=val('day5Commit');
+  p.day5InviteCompleted=true;p.currentDay=6;p.lastViewedDay=5;writeDuplikacjaProfile(p,true);renderRoadmap(6);openRoadmapDay(6);
+}
+function saveDay6Observation(){
+  const p=readDuplikacjaProfile();
+  p.day6Observation1=val('day6Observation1');p.day6Observation2=val('day6Observation2');p.day6Observation3=val('day6Observation3');
+  writeDuplikacjaProfile(p,true);
+  const fb=document.getElementById('day6ObservationFeedback');if(fb)fb.innerHTML="<b>Obserwacje zapisane. ✅</b>";
+}
+function completeDay6Meeting(){
+  const a1=val('day6Action1'),a2=val('day6Action2'),a3=val('day6Action3');
+  const fb=document.getElementById('day6MeetingFeedback');
+  if(!a1||!a2||!a3){if(fb)fb.innerHTML="<b>Uzupełnij 3 rzeczy, które wykorzystasz przy najbliższej rozmowie.</b>";return;}
+  const p=readDuplikacjaProfile();
+  p.day6Observation1=val('day6Observation1');p.day6Observation2=val('day6Observation2');p.day6Observation3=val('day6Observation3');p.day6Action1=a1;p.day6Action2=a2;p.day6Action3=a3;
+  p.day6MeetingCompleted=true;p.currentDay=7;p.lastViewedDay=6;writeDuplikacjaProfile(p,true);renderRoadmap(7);openRoadmapDay(7);
+}
+function escapeHtml(v){
+  return String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+function completeInvitationAnalysis(){
+  const ids=["iaPerson","iaOpening","iaNeed","iaInvite","iaContract","iaWorked","iaImprove","iaRating","iaTo10","iaNext"];
+  const values={};
+  ids.forEach(function(id){const el=document.getElementById(id); values[id]=el?el.value.trim():"";});
+  const required=["iaPerson","iaOpening","iaNeed","iaInvite","iaContract","iaWorked","iaImprove","iaRating","iaTo10","iaNext"];
+  const missing=required.some(function(id){return !values[id];});
+  const feedback=document.getElementById("invitationAnalysisFeedback");
+  if(missing){
+    if(feedback)feedback.innerHTML="<b>Uzupełnij analizę.</b><br>Wypełnij wszystkie pola i wybierz jedną konkretną rzecz do poprawy przy następnym zaproszeniu.";
+    return;
+  }
+  const p=readDuplikacjaProfile();
+  p.invitationAnalysis=p.invitationAnalysis||{};
+  Object.assign(p.invitationAnalysis,values);
+  p.invitationAnalysisCompleted=true;
+  p.currentDay=Math.max(10,Number(p.currentDay||1));
+  p.lastViewedDay=9;
+  localStorage.setItem("duplikacjaLastViewedModule","9");
+  writeDuplikacjaProfile(p,true);
+  const b=document.getElementById("invitationAnalysisSave"); if(b)b.style.display="none";
+  if(feedback)feedback.innerHTML="<b>Analiza zaproszenia zapisana. ✅</b><br>Możesz przejść do kolejnego modułu.";
+  const nextBtn=document.createElement("button");
+  nextBtn.className="primary";
+  nextBtn.id="invitationAnalysisNext";
+  nextBtn.textContent="➡️ Przejdź do kolejnego modułu";
+  nextBtn.onclick=function(){ openRoadmapDay(10); };
+  if(feedback)feedback.appendChild(nextBtn);
+  renderRoadmap(10);
+}
+function completeWeeklyReport(){
+  const ids=["wrContacts","wrInvites","wrMeetings","wrMaterials","wrFollowups","wrNextSteps","wrWorked","wrHard","wrLearned","wrRating","wrNextPoint","wrPlan"];
+  const values={};
+  let missing=false;
+  ids.forEach(function(id){const el=document.getElementById(id); values[id]=el?el.value.trim():"";});
+  ["wrWorked","wrHard","wrLearned","wrRating","wrNextPoint","wrPlan"].forEach(function(id){if(!values[id])missing=true;});
+  if(missing){
+    const f=document.getElementById("weeklyReportFeedback");
+    if(f)f.innerHTML="<b>Uzupełnij raport.</b><br>Najpierw odpowiedz na pytania podsumowujące i wpisz plan 3 działań na kolejny etap.";
+    return;
+  }
+  const p=readDuplikacjaProfile();
+  p.weeklyReport=p.weeklyReport||{};
+  Object.assign(p.weeklyReport,values);
+  p.weeklyReportCompleted=true;
+  p.currentDay=Math.max(9,Number(p.currentDay||1));
+  p.lastViewedDay=8;
+  localStorage.setItem("duplikacjaLastViewedModule","8");
+  writeDuplikacjaProfile(p,true);
+  const b=document.getElementById("weeklyReportSave"); if(b)b.style.display="none";
+  const f=document.getElementById("weeklyReportFeedback");
+  if(f)f.innerHTML="<b>Raport pierwszego etapu zapisany. ✅</b><br>Możesz przejść do kolejnego modułu.";
+  renderRoadmap(9);
+}
+function completeDay7(){
+  const fields=['day7Person','day7Opening','day7Question','day7NextStep','day7Date'];const values={};fields.forEach(function(id){values[id]=val(id);});
+  const fb=document.getElementById('day7Feedback');
+  if(Object.values(values).some(v=>!v)){if(fb)fb.innerHTML="<b>Uzupełnij wszystkie 5 pól, żeby zakończyć Follow-up.</b>";return;}
+  const p=readDuplikacjaProfile();
+  Object.assign(p,values);
+  // Zachowaj też wcześniejsze nazwy pól, jeśli starsza wersja prototypu ich używała.
+  p.day6Person=p.day6Person||values.day7Person;
+  p.day6Opening=p.day6Opening||values.day7Opening;
+  p.day6Question=p.day6Question||values.day7Question;
+  p.day6NextStep=p.day6NextStep||values.day7NextStep;
+  p.day6Date=p.day6Date||values.day7Date;
+  p.day7Completed=true;
+  p.currentDay=Math.max(8,Number(p.currentDay||1));
+  p.lastViewedDay=7;
+  localStorage.setItem("duplikacjaLastViewedModule","7");
+  writeDuplikacjaProfile(p,true);
+  renderRoadmap(8);
+  openRoadmapDay(8);
+}
+
+function checkGenericDay(){
+  const answer=val("roadmapAnswer");
+  const action=val("roadmapAction");
+  const result=document.getElementById("roadmapResult");
+  const feedback=document.getElementById("roadmapFeedback");
+  result.classList.remove("hidden");
+  if(answer.length<30 || action.length<20){
+    feedback.innerHTML="<b>Jeszcze nie.</b><br>Najpierw odpowiedz własnymi słowami na ćwiczenie i wpisz konkretne działanie, które wykonasz dzisiaj.";
+    return;
+  }
+  feedback.innerHTML="<b>Możesz zaliczyć ten dzień. ✅</b><br>Odpowiedź i działanie zostały przygotowane. Kliknij „Ukończ dzień i odblokuj następny”.";
+}
+
+function finishRoadmapDay(){
+  const profile=JSON.parse(localStorage.getItem("duplikacjaProfile")||"{}");
+  let current=Number(profile.currentDay||1);
+
+  if(current>=4){
+    profile["day"+current+"Answer"]=val("roadmapAnswer");
+    profile["day"+current+"Action"]=val("roadmapAction");
+    profile["day"+current+"Completed"]=true;
+  }
+
+  if(current<91) current++;
+  profile.currentDay=current;
+  writeDuplikacjaProfile(profile,true);
+
+  renderRoadmap(current);
+
+  if(current<=90){
+    openRoadmapDay(current);
+  }
+}
+
+function resetApp(){localStorage.removeItem("duplikacjaProfile");localStorage.removeItem("duplikacjaLastViewedModule");location.reload()}
+restoreSavedProfile();
+showRoadmap();
+
+document.addEventListener("input",function(e){
+  if(e.target && e.target.id==="productRecall") autosaveProductField("productRecall","recall");
+  if(e.target && e.target.id==="productPractice") autosaveProductField("productPractice","practice");
+  if(e.target && e.target.id==="productRecall2") autosaveProductField("productRecall2","recall2");
+});
+</script>
+</body>
+</html>
