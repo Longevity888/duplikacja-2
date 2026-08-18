@@ -2721,12 +2721,8 @@ function jumpToModule12() {
   localStorage.setItem('duplikacjaProfile', JSON.stringify(testProfile));
   localStorage.setItem('duplikacjaProfileBackup', JSON.stringify(testProfile));
   
-  if (typeof renderProfile === 'function') renderProfile();
-  if (typeof loadProgress === 'function') loadProgress();
-  if (typeof init === 'function') init();
-  
-  alert('Przeskoczono do Modułu 12!');
-  window.location.reload();
+  // Wymuszenie przeładowania strony z nowym adresem, żeby aplikacja się odświeżyła
+  window.location.href = window.location.pathname + '?reset=' + new Date().getTime();
 }
 </script>
 
@@ -2735,5 +2731,6 @@ function jumpToModule12() {
     Przeskocz do Modułu 12
   </button>
 </div>
+
 
 
