@@ -2712,16 +2712,37 @@ initTestProfile();
 </div>
 <script>
 function jumpToModule12() {
-  const testProfile = {
+  const fullProfile = {
     currentModule: 12,
-    completedModules: [1,2,3,4,5,6,7,8,9,10,11],
-    lastUpdated: new Date().toISOString()
+    completedModules: [1,2,3,4,5,6,7,8,9,10,11,12],
+    lastUpdated: new Date().toISOString(),
+    products: {},
+    _meta: {
+      schemaVersion: 2,
+      updatedAt: new Date().toISOString(),
+      selfIntro: "Test",
+      currentDay: 12,
+      day1Completed: true,
+      day2Completed: true,
+      day3Completed: true,
+      day4Completed: true,
+      day5Completed: true,
+      day6Completed: true,
+      day7Completed: true,
+      day8Completed: true,
+      day9Completed: true,
+      day10Completed: true,
+      day11Completed: true,
+      day12Completed: true,
+      lastViewedDay: 12,
+      day1Answer: "Test",
+      day1Confidence: "10"
+    }
   };
   
-  localStorage.setItem('duplikacjaProfile', JSON.stringify(testProfile));
-  localStorage.setItem('duplikacjaProfileBackup', JSON.stringify(testProfile));
+  localStorage.setItem('duplikacjaProfile', JSON.stringify(fullProfile));
+  localStorage.setItem('duplikacjaProfileBackup', JSON.stringify(fullProfile));
   
-  // Wymuszenie przeładowania strony z nowym adresem, żeby aplikacja się odświeżyła
   window.location.href = window.location.pathname + '?reset=' + new Date().getTime();
 }
 </script>
@@ -2731,6 +2752,8 @@ function jumpToModule12() {
     Przeskocz do Modułu 12
   </button>
 </div>
+
+
 
 
 
